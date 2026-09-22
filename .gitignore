@@ -36,6 +36,7 @@ pyrightconfig.json
 AGENTS.md
 .agents/
 .codex/
+.cursor/
 graphify-out/
 scratch/
 
