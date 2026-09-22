@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.filters import ClientFilter, ContractFilter
 from apps.core.models import Client, Contract, DocumentType
 from apps.core.serializers import ClientSerializer, ContractSerializer, DocumentTypeSerializer
 from apps.core.services import create_contract
@@ -19,7 +20,7 @@ class ClientViewSet(viewsets.ModelViewSet):
     serializer_class = ClientSerializer
     permission_classes = (IsAuthenticated,)
     filter_backends = (DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter)
-    filterset_fields = ("client_type", "document_type")
+    filterset_class = ClientFilter
     search_fields = ("name", "identification_number", "email")
     ordering_fields = ("name", "created_at")
     http_method_names = ("get", "post", "patch", "put", "head", "options")  # sin DELETE: PROTECT
@@ -32,9 +33,10 @@ class ContractViewSet(viewsets.ModelViewSet):
     serializer_class = ContractSerializer
     permission_classes = (IsAuthenticated,)
     filter_backends = (DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter)
-    filterset_fields = ("status", "client")
+    filterset_class = ContractFilter
     search_fields = ("contract_number", "client__name", "client__identification_number", "property_address")
     ordering_fields = ("start_date", "end_date", "contract_number", "created_at")
+    ordering = ("-start_date", "contract_number")
     http_method_names = ("get", "post", "patch", "put", "head", "options")
 
     def create(self, request, *args, **kwargs):

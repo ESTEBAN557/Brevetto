@@ -8,6 +8,7 @@ import type {
   Document,
   DocumentReceipt,
   DocumentType,
+  ExpiringResponse,
   Paginated,
   PortalReceipt,
   PortalSession,
@@ -131,6 +132,7 @@ export const documentsApi = {
   get: (id: string) => apiFetch<Document>(`/documents/${id}/`),
   pendingReview: (query?: RequestOptions["query"]) =>
     apiFetch<Paginated<Document>>("/documents/pending-review/", { query }),
+  expiring: (query?: RequestOptions["query"]) => apiFetch<ExpiringResponse>("/documents/expiring/", { query }),
   upload: (form: FormData) => apiFetch<DocumentReceipt>("/documents/upload/", { method: "POST", body: form }),
   batchUpload: (form: FormData) =>
     apiFetch<BatchUploadResponse>("/documents/batch-upload/", { method: "POST", body: form }),

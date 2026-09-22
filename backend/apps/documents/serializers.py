@@ -118,8 +118,26 @@ class DocumentSerializer(serializers.ModelSerializer):
     client_name = serializers.CharField(
         source="digital_record.contract.client.name", read_only=True, default=None
     )
+    client_email = serializers.CharField(
+        source="digital_record.contract.client.email", read_only=True, default=None
+    )
+    client_phone = serializers.CharField(
+        source="digital_record.contract.client.phone", read_only=True, default=None
+    )
     registered_by = serializers.CharField(source="registered_by.username", read_only=True, default=None)
     needs_human_review = serializers.BooleanField(read_only=True)
+    days_to_expiration = serializers.SerializerMethodField()
+    expiration_stage = serializers.SerializerMethodField()
+
+    def get_days_to_expiration(self, obj):
+        from apps.documents.services.expirations import days_to_expiration
+
+        return days_to_expiration(obj.expiration_date)
+
+    def get_expiration_stage(self, obj):
+        from apps.documents.services.expirations import alert_stage
+
+        return alert_stage(obj.expiration_date)
 
     class Meta:
         model = Document
@@ -137,11 +155,15 @@ class DocumentSerializer(serializers.ModelSerializer):
             "contract_id",
             "contract_number",
             "client_name",
+            "client_email",
+            "client_phone",
             "document_type",
             "ai_extracted_data",
             "ai_confidence_score",
             "document_date",
             "expiration_date",
+            "days_to_expiration",
+            "expiration_stage",
             "registered_by",
             "external_sender_name",
             "created_at",

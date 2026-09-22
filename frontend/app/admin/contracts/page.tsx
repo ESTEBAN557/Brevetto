@@ -27,6 +27,10 @@ const EMPTY_FORM = {
 export default function ContractsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [expiringDays, setExpiringDays] = useState("");
+  const [endFrom, setEndFrom] = useState("");
+  const [endTo, setEndTo] = useState("");
+  const [hasDocuments, setHasDocuments] = useState("");
   const [data, setData] = useState<Paginated<Contract> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -39,7 +43,17 @@ export default function ContractsPage() {
 
   async function load() {
     try {
-      setData(await contractsApi.list({ search, status, ordering: "-created_at" }));
+      setData(
+        await contractsApi.list({
+          q: search,
+          status,
+          expiring_within_days: expiringDays,
+          end_from: endFrom,
+          end_to: endTo,
+          has_documents: hasDocuments,
+          ordering: expiringDays ? "end_date" : "-created_at",
+        }),
+      );
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error cargando contratos");
@@ -50,7 +64,7 @@ export default function ContractsPage() {
     const handle = window.setTimeout(load, 250);
     return () => window.clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, status]);
+  }, [search, status, expiringDays, endFrom, endTo, hasDocuments]);
 
   useEffect(() => {
     if (form.new_client || clientQuery.trim().length < 2) {
@@ -225,16 +239,55 @@ export default function ContractsPage() {
       )}
 
       <div className="card">
-        <div className="card-title">
+        <div className="card-title" style={{ alignItems: "flex-start", flexWrap: "wrap", gap: "0.75rem" }}>
           <h2>Contratos</h2>
           <div className="row">
-            <input placeholder="Buscar contrato, cliente, NIT o dirección…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 320 }} />
-            <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 180 }}>
-              <option value="">Todos</option>
+            <input
+              placeholder="Buscar contrato, razón social, NIT o dirección…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: 320 }}
+            />
+            <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: 170 }}>
+              <option value="">Todos los estados</option>
               <option value="ACTIVO">Activos</option>
               <option value="EN_RENOVACION">En renovación</option>
               <option value="TERMINADO">Terminados</option>
             </select>
+            <select value={expiringDays} onChange={(e) => setExpiringDays(e.target.value)} style={{ width: 200 }}>
+              <option value="">Cualquier vigencia</option>
+              <option value="30">Terminan en 30 días</option>
+              <option value="60">Terminan en 60 días</option>
+              <option value="90">Terminan en 90 días</option>
+              <option value="180">Terminan en 180 días</option>
+            </select>
+            <select value={hasDocuments} onChange={(e) => setHasDocuments(e.target.value)} style={{ width: 190 }}>
+              <option value="">Con y sin documentos</option>
+              <option value="true">Con documentos</option>
+              <option value="false">Expediente vacío</option>
+            </select>
+            <label className="row small muted nowrap">
+              Fin entre
+              <input type="date" value={endFrom} onChange={(e) => setEndFrom(e.target.value)} style={{ width: 150 }} />
+              y
+              <input type="date" value={endTo} onChange={(e) => setEndTo(e.target.value)} style={{ width: 150 }} />
+            </label>
+            {(search || status || expiringDays || endFrom || endTo || hasDocuments) && (
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                onClick={() => {
+                  setSearch("");
+                  setStatus("");
+                  setExpiringDays("");
+                  setEndFrom("");
+                  setEndTo("");
+                  setHasDocuments("");
+                }}
+              >
+                Limpiar
+              </button>
+            )}
           </div>
         </div>
         <ErrorBox message={error} />

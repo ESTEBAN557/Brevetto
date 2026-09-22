@@ -7,6 +7,31 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.3.0] - Sprint 2 (Búsqueda Avanzada, Alertas de Vencimiento y Datos de Demostración) - 2026-09-21
+
+### ✨ Añadido (Added)
+- **Búsqueda y Filtros Avanzados (`US-018`, `US-022`):**
+  - `DocumentFilter` (`apps/documents/filters.py`) con búsqueda facetada en `GET /api/v1/documents/`: búsqueda rápida `q` (radicado, archivo, remitente, contrato, razón social con *full-text search* en español y NIT/cédula normalizado sin puntos ni guiones), listas separadas por comas en `status`, `channel` y `category`, rangos de fechas `created_from/created_to`, `document_date_from/to`, `expiration_from/to`, `expiring_within_days` + `include_expired`, `expired`, `has_contract`, `contract`, `contract_number`, `client`, `client_identification`, `min_confidence/max_confidence` y `registered_by`.
+  - `ContractFilter` y `ClientFilter` (`apps/core/filters.py`): `q` full-text por razón social, NIT normalizado, número de contrato y dirección; `status` múltiple, `start_from/to`, `end_from/to`, `expiring_within_days`, `expired` y `has_documents`.
+  - Nuevos campos de ordenamiento (`document_date`, `filing_number`).
+  - Frontend: barra de búsqueda rápida y panel de filtros avanzados (estado, canal, categoría, rango de radicación, rango de vencimiento) en `/admin`; filtros por estado, vencimiento de contrato, rango de fecha de fin y expedientes con/sin documentos en `/admin/contracts`.
+- **Sistema de Alertas y Vencimientos (Requerimiento Coltebienes #6):**
+  - Servicio `apps/documents/services/expirations.py` con etapas `warning` (≤ 30 días), `critical` (≤ 7 días) y `expired`.
+  - Tarea periódica de Celery beat `documents.check_expiring_documents` (cada 6 h, configurable con `EXPIRATION_CHECK_SECONDS`) que registra la alerta en `AuditLog` con la nueva acción `ALERTA_VENCIMIENTO`, una sola vez por documento y etapa, incluyendo datos de contacto del inquilino (correo y teléfono) para gestionar la renovación.
+  - Endpoint `GET /api/v1/documents/expiring/?days=30&include_expired=true` con conteos de vencidos/por vencer y, en cada documento, `days_to_expiration`, `expiration_stage`, `client_email` y `client_phone`.
+  - Frontend: tarjeta "Documentos próximos a vencer" en el dashboard `/admin` con insignias visuales por etapa (vencido / crítico / aviso), contacto del inquilino y acceso directo al documento y al expediente.
+- **Datos Semilla de Demostración:**
+  - Comando `python manage.py seed_demo_data` (`apps/core/management/commands/seed_demo_data.py`), idempotente: usuario `demo`, 3 clientes con NIT realistas, 3 contratos activos (Bodega Guayabal, Local El Poblado, Centro Logístico Calle 80) con expediente en MinIO, y 5 documentos con PDF real generado por `scripts/make_sample_pdf.py` (póliza por vencer, factura, certificado vencido, carta en revisión por baja confianza y póliza en revisión por contrato desconocido), con auditoría coherente y alertas de vencimiento precalculadas.
+  - Nueva plantilla `certificado` (Cámara de Comercio) en el generador de PDFs.
+- **Pruebas:** nuevas suites `test_filters.py`, `test_expirations.py` y `test_seed_demo_data.py`; la suite completa se mantiene al 100 %.
+
+### 🔄 Cambiado (Changed)
+- `DocumentViewSet`, `ContractViewSet` y `ClientViewSet` reemplazan `filterset_fields` por `FilterSet` dedicados (compatibles con los parámetros del Sprint 1).
+- `DocumentSerializer` expone `client_email`, `client_phone`, `days_to_expiration` y `expiration_stage`.
+- Migración `documents.0003_auditlog_expiration_alert_action` (nueva opción de acción en la bitácora).
+
+---
+
 ## [0.2.0] - Sprint 1 (Implementación MVP y Pipeline Documental) - 2026-09-21
 
 ### ✨ Añadido (Added)

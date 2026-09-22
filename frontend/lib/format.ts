@@ -58,6 +58,19 @@ export const CATEGORY_LABELS: Record<DocumentCategory, string> = {
 
 export const CATEGORY_ORDER: DocumentCategory[] = ["LEGAL", "POLIZA", "FINANCIERO", "SERVICIOS", "COMUNICACION"];
 
+export const STAGE_LABELS: Record<string, string> = {
+  expired: "Vencido",
+  critical: "Crítico",
+  warning: "Por vencer",
+};
+
+export function stageBadgeClass(stage: string | null | undefined): string {
+  if (stage === "expired") return "badge badge-FALLIDO";
+  if (stage === "critical") return "badge badge-REQUIERE_REVISION";
+  if (stage === "warning") return "badge badge-RECIBIDO";
+  return "badge badge-neutral";
+}
+
 export function daysUntil(dateValue: string | null | undefined): number | null {
   if (!dateValue) return null;
   const target = new Date(`${dateValue.slice(0, 10)}T00:00:00`);

@@ -20,6 +20,17 @@ export type DocumentCategory =
   | "FINANCIERO"
   | "COMUNICACION";
 
+export type ExpirationStage = "expired" | "critical" | "warning";
+
+export interface ExpiringResponse {
+  as_of: string;
+  days: number;
+  count: number;
+  expired: number;
+  expiring_soon: number;
+  results: Document[];
+}
+
 export interface Paginated<T> {
   count: number;
   next: string | null;
@@ -63,11 +74,15 @@ export interface Document {
   contract_id: string | null;
   contract_number: string | null;
   client_name: string | null;
+  client_email: string | null;
+  client_phone: string | null;
   document_type: DocumentType | null;
   ai_extracted_data: AiExtractedData;
   ai_confidence_score: number | null;
   document_date: string | null;
   expiration_date: string | null;
+  days_to_expiration: number | null;
+  expiration_stage: ExpirationStage | null;
   registered_by: string | null;
   external_sender_name: string;
   created_at: string;

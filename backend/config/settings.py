@@ -175,10 +175,16 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 # Documentos sin avance en RECIBIDO/PROCESANDO tras N minutos se re-encolan (Celery beat).
 PROCESSING_STALE_AFTER_MINUTES = env.int("PROCESSING_STALE_AFTER_MINUTES", default=15)
+# Alertas de vencimiento documental (Coltebienes #6): ventana de aviso y frecuencia de revisión.
+EXPIRATION_ALERT_DAYS = env.int("EXPIRATION_ALERT_DAYS", default=30)
 CELERY_BEAT_SCHEDULE = {
     "requeue-stale-documents": {
         "task": "documents.requeue_stale_documents",
         "schedule": env.int("STALE_DOCUMENTS_CHECK_SECONDS", default=300),
+    },
+    "check-expiring-documents": {
+        "task": "documents.check_expiring_documents",
+        "schedule": env.int("EXPIRATION_CHECK_SECONDS", default=6 * 60 * 60),
     },
 }
 

@@ -93,6 +93,20 @@ def process_document_content_task(self, document_id: str) -> dict:
     }
 
 
+@shared_task(name="documents.check_expiring_documents")
+def check_expiring_documents_task(days: int | None = None) -> dict:
+    """Alertas de vencimiento (Coltebienes #6): registra en AuditLog los documentos
+    vencidos o por vencer en los próximos `days` días (30 por defecto), una vez por etapa."""
+    from apps.documents.services.expirations import check_expiring_documents
+
+    summary = check_expiring_documents(days)
+    logger.info(
+        "Vencimientos: %s revisados, %s alertas nuevas (vencidos=%s, críticos=%s, aviso=%s)",
+        summary["checked"], summary["alerts_created"], summary["expired"], summary["critical"], summary["warning"],
+    )
+    return summary
+
+
 @shared_task(name="documents.requeue_stale_documents")
 def requeue_stale_documents_task(stale_after_minutes: int | None = None) -> dict:
     """Red de seguridad periódica (Celery beat).

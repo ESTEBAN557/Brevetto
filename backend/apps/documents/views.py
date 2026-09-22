@@ -7,6 +7,7 @@ request es la subida al bucket; el análisis con IA corre en Celery.
 from __future__ import annotations
 
 from django.db import transaction
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
@@ -14,7 +15,9 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.documents.filters import DocumentFilter
 from apps.documents.models import AuditLog, Document
+from apps.documents.services.expirations import alert_window_days, expiring_documents_queryset
 from apps.documents.serializers import (
     AuditLogSerializer,
     DocumentBatchUploadSerializer,
@@ -44,7 +47,7 @@ class DocumentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets
     serializer_class = DocumentSerializer
     permission_classes = (IsAuthenticated,)
     filter_backends = (DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter)
-    filterset_fields = ("processing_status", "source_channel", "document_type", "digital_record")
+    filterset_class = DocumentFilter
     search_fields = (
         "filing_number",
         "original_filename",
@@ -53,8 +56,38 @@ class DocumentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets
         "digital_record__contract__client__name",
         "digital_record__contract__client__identification_number",
     )
-    ordering_fields = ("created_at", "expiration_date", "ai_confidence_score")
+    ordering_fields = ("created_at", "expiration_date", "document_date", "ai_confidence_score", "filing_number")
     ordering = ("-created_at",)
+
+    # ----------------------------------------------------------- vencimientos --
+    @action(detail=False, methods=["get"], url_path="expiring")
+    def expiring(self, request):
+        """Documentos vencidos o por vencer (ventana `days`, 30 por defecto) para el panel de alertas."""
+        try:
+            days = int(request.query_params.get("days", alert_window_days()))
+        except ValueError:
+            return Response({"days": "Debe ser un entero."}, status=status.HTTP_400_BAD_REQUEST)
+        days = max(0, min(days, 365))
+        include_expired = str(request.query_params.get("include_expired", "true")).lower() not in ("false", "0", "no")
+        try:
+            limit = max(1, min(int(request.query_params.get("limit", 50)), 200))
+        except ValueError:
+            limit = 50
+
+        today = timezone.localdate()
+        queryset = expiring_documents_queryset(days, include_expired=include_expired, today=today)
+        documents = list(queryset[:limit])
+        expired = sum(1 for d in documents if d.expiration_date < today)
+        return Response(
+            {
+                "as_of": today.isoformat(),
+                "days": days,
+                "count": queryset.count(),
+                "expired": expired,
+                "expiring_soon": len(documents) - expired,
+                "results": self.get_serializer(documents, many=True).data,
+            }
+        )
 
     # ------------------------------------------------------------- radicación --
     @action(

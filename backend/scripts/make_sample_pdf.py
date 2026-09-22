@@ -35,6 +35,18 @@ TEMPLATES = {
         "Concepto: Mantenimiento preventivo de cubierta bodega",
         "Total: COP 3.450.000",
     ],
+    "certificado": [
+        "CAMARA DE COMERCIO DE MEDELLIN PARA ANTIOQUIA",
+        "CERTIFICADO DE EXISTENCIA Y REPRESENTACION LEGAL",
+        "Razon social: {client}",
+        "NIT: {nit}",
+        "Codigo de verificacion: {policy}",
+        "Fecha de expedicion: {issued}",
+        "Valido hasta: {end}",
+        "Referencia contractual: {contract} - {address}",
+        "El presente certificado se expide para acreditar la representacion legal",
+        "ante COLTEBIENES S.A.",
+    ],
     "carta": [
         "Medellin, {issued}",
         "Senores COLTEBIENES S.A.",
