@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AuditTimeline } from "@/components/AuditTimeline";
 import { ErrorBox, Loading } from "@/components/DataState";
+import { FilingStamp } from "@/components/FilingStamp";
 import { PdfViewer } from "@/components/PdfViewer";
 import { StatusBadge } from "@/components/StatusBadge";
 import { documentsApi, documentTypesApi } from "@/lib/api";
@@ -90,7 +91,7 @@ export default function DocumentDetailPage() {
       <div className="page-header">
         <div>
           <h1 className="row">
-            <span className="mono">{doc.filing_number}</span> <StatusBadge status={doc.processing_status} />
+            <FilingStamp value={doc.filing_number} size="lg" /> <StatusBadge status={doc.processing_status} />
           </h1>
           <p>
             {doc.original_filename} · {formatBytes(doc.file_size_bytes)} · {CHANNEL_LABELS[doc.source_channel]} · radicado{" "}

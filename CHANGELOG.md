@@ -7,6 +7,22 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.4.1] - Rediseño Visual Corporativo Coltebienes ("Stitch Look") - 2026-09-21
+
+### 🎨 Cambiado (Changed)
+- **Sistema de diseño (`frontend/app/globals.css`):** nuevos tokens raíz alineados a la identidad de Coltebienes S.A. — canvas pergamino `#F6F4EF`, tinta carbón `#161513`, oro girasol `#ffc600` (CTA), bronce `#8B5E11` sobre pergamino `#F1E6CC` para sellos y radicados, verde bosque `#4B6E5E` / `#E7EEEA` para automatización IA y terracota `#A8362E` / `#FBEBE9` para alertas. Tarjetas blancas con borde `#E6E1D3` y sombra `0 4px 24px rgba(22,21,19,.06)`; botones principales redondeados en oro con tipografía oscura. Tipografías Poppins (UI), Inter (texto) y JetBrains Mono / Consolas (códigos).
+- **`AdminShell`:** barra lateral oscura con logo oficial de Coltebienes (`frontend/public/coltebienes-logo.png`, extraído del mockup), indicador dorado en la pestaña activa, chip de sesión con avatar de iniciales y barra superior contextual.
+- **`FilingStamp` (nuevo):** sello monoespaciado bronce/pergamino aplicado a todos los `RAD-YYYYMMDD-XXXXXX` (bandeja, expedientes, auditoría, alertas, revisión, comprobantes).
+- **`StatusBadge` / `AuditTable`:** badges temáticos por estado y por acción de auditoría (carga, IA, validación, edición, consulta, descarga, alerta) y sello "🔒 Registro Inmutable · PostgreSQL Trigger Protected".
+- **`KpiCards`:** barra de acento superior por semántica (tinta, bosque, oro, terracota, bronce) y encabezado "Eficiencia ganada".
+- **Portal público:** stepper visual de 3 pasos, comprobante oficial con logo, sello de radicación bronce y **código QR de verificación** (radicado, contrato, huella SHA-256, firma) imprimible desde el modal.
+- Landing y login con lockup de marca.
+
+### ✨ Añadido (Added)
+- Dependencia `qrcode` (+ `@types/qrcode`) para la generación del QR en el navegador.
+
+---
+
 ## [0.4.0] - Sprint 3 (Auditoría Global, Exportación de Expedientes y Métricas Ejecutivas) - 2026-09-21
 
 ### ✨ Añadido (Added)

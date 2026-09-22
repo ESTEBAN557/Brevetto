@@ -6,6 +6,7 @@ import { usePolling } from "@/hooks/usePolling";
 import { documentsApi } from "@/lib/api";
 import { STAGE_LABELS, formatDate, stageBadgeClass } from "@/lib/format";
 import { ErrorBox, Loading } from "./DataState";
+import { FilingStamp } from "./FilingStamp";
 
 const WINDOWS = [7, 30, 60, 90];
 
@@ -72,7 +73,9 @@ export function ExpiringPanel() {
                       </td>
                       <td>
                         <div>{doc.document_type?.name ?? "Sin tipificar"}</div>
-                        <div className="small mono muted">{doc.filing_number}</div>
+                        <div style={{ marginTop: 4 }}>
+                          <FilingStamp value={doc.filing_number} />
+                        </div>
                       </td>
                       <td>
                         {doc.contract_id ? (

@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 import { ContractPicker } from "@/components/ContractPicker";
 import { ErrorBox } from "@/components/DataState";
 import { FileDrop } from "@/components/FileDrop";
+import { FilingStamp } from "@/components/FilingStamp";
 import { StatusBadge } from "@/components/StatusBadge";
 import { documentsApi } from "@/lib/api";
 import type { Contract, ProcessingStatus, SourceChannel } from "@/lib/types";
@@ -119,8 +120,10 @@ export default function UploadPage() {
               <tbody>
                 {receipts.map((r) => (
                   <tr key={r.id}>
-                    <td className="mono">
-                      <Link href={`/admin/documents/${r.id}`}>{r.filing_number}</Link>
+                    <td>
+                      <Link href={`/admin/documents/${r.id}`}>
+                        <FilingStamp value={r.filing_number} />
+                      </Link>
                     </td>
                     <td className="truncate" style={{ maxWidth: 200 }}>
                       {r.filename}

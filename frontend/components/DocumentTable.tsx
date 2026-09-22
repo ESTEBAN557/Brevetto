@@ -6,6 +6,7 @@ import { CHANNEL_LABELS, formatConfidence, formatDateTime } from "@/lib/format";
 import type { Document } from "@/lib/types";
 import { Empty } from "./DataState";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
+import { FilingStamp } from "./FilingStamp";
 import { StatusBadge } from "./StatusBadge";
 
 export function DocumentTable({ documents, showContract = true }: { documents: Document[]; showContract?: boolean }) {
@@ -32,7 +33,9 @@ export function DocumentTable({ documents, showContract = true }: { documents: D
           <tbody>
             {documents.map((doc) => (
               <tr key={doc.id}>
-                <td className="mono nowrap">{doc.filing_number}</td>
+                <td className="nowrap">
+                  <FilingStamp value={doc.filing_number} />
+                </td>
                 <td className="truncate" style={{ maxWidth: 220 }} title={doc.original_filename}>
                   {doc.original_filename}
                 </td>

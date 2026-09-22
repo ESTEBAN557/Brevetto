@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import QRCode from "qrcode";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ErrorBox } from "@/components/DataState";
 import { FileDrop } from "@/components/FileDrop";
+import { FilingStamp } from "@/components/FilingStamp";
 import { Modal, printModal } from "@/components/Modal";
 import { ApiError, portalApi } from "@/lib/api";
 import { formatBytes, formatDate } from "@/lib/format";
@@ -89,20 +91,23 @@ export default function PortalFilingPage() {
   return (
     <main className="page page-narrow">
       <div className="page-header no-print">
-        <div>
-          <h1>Radicación de documentos · Coltebienes S.A.</h1>
-          <p>Portal para inquilinos y propietarios. Radique documentos directamente en el expediente de su contrato.</p>
+        <div className="brand-lockup" style={{ marginBottom: 0 }}>
+          <div className="brand-chip">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/coltebienes-logo.png" alt="Coltebienes S.A." />
+          </div>
+          <div>
+            <div className="kicker">Portal de radicación web</div>
+            <h1 style={{ margin: 0 }}>Radicación de documentos</h1>
+            <p className="small">Inquilinos y propietarios: radique directamente en el expediente de su contrato.</p>
+          </div>
         </div>
         <Link href="/" className="small">
           Inicio
         </Link>
       </div>
 
-      <div className="steps no-print">
-        <span className={step === 1 ? "active" : "done"}>1. Validar contrato</span>
-        <span className={step === 2 ? "active" : step > 2 ? "done" : ""}>2. Cargar documento</span>
-        <span className={step === 3 ? "active" : ""}>3. Comprobante</span>
-      </div>
+      <Stepper step={step} />
 
       {step === 1 && (
         <form className="card stack" onSubmit={verify}>
@@ -195,11 +200,16 @@ export default function PortalFilingPage() {
         <div className="stack">
           <div className="receipt">
             <div className="receipt-head">
-              <div>
-                <h2>Comprobante de radicación</h2>
-                <div className="muted small">Coltebienes S.A. · Sistema de Gestión Documental Brevetto</div>
+              <div className="receipt-brand">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/coltebienes-logo.png" alt="Coltebienes S.A." />
+                <div className="receipt-kicker">Sistema de Gestión Documental Brevetto</div>
+                <h2 style={{ margin: "0.25rem 0 0" }}>Comprobante de radicación</h2>
               </div>
-              <div className="filing">{receipt.filing_number}</div>
+              <div className="right">
+                <div className="receipt-kicker">Número de radicado</div>
+                <div className="filing">{receipt.filing_number}</div>
+              </div>
             </div>
             <dl>
               <dt>Fecha y hora de radicación</dt>
@@ -266,19 +276,71 @@ export default function PortalFilingPage() {
   );
 }
 
-/** Comprobante oficial (US-019): documento imprimible con el radicado RAD-YYYYMMDD-XXXXXX. */
+/** Stepper visual de 3 pasos del portal. */
+function Stepper({ step }: { step: Step }) {
+  const items = [
+    { n: 1, label: "Validar contrato", sub: "Número de contrato y NIT / cédula" },
+    { n: 2, label: "Cargar documento", sub: "PDF o imagen, hasta 25 MB" },
+    { n: 3, label: "Comprobante", sub: "Radicado oficial imprimible" },
+  ];
+  return (
+    <div className="stepper no-print" aria-label="Progreso de la radicación">
+      {items.map((item) => {
+        const state = step === item.n ? "active" : step > item.n ? "done" : "";
+        return (
+          <div key={item.n} className={`step ${state}`}>
+            <div className="circle">{state === "done" ? "✓" : item.n}</div>
+            <div className="label">{item.label}</div>
+            <div className="sub">{item.sub}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Código QR de verificación del comprobante (radicado + huella + firma). */
+function VerificationQr({ receipt }: { receipt: PortalReceipt }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    const payload = [
+      "BREVETTO",
+      receipt.filing_number,
+      receipt.contract_number,
+      `sha256:${receipt.file_hash}`,
+      `sig:${receipt.receipt_signature}`,
+      receipt.received_at,
+    ].join("|");
+    QRCode.toDataURL(payload, { errorCorrectionLevel: "M", margin: 1, width: 224, color: { dark: "#161513", light: "#ffffff" } })
+      .then(setSrc)
+      .catch(() => setSrc(null));
+  }, [receipt]);
+  if (!src) return <div className="qr" aria-hidden />;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img className="qr" src={src} alt={`Código QR de verificación del radicado ${receipt.filing_number}`} />;
+}
+
+/** Comprobante oficial (US-019): documento imprimible con sello de radicación y QR verificable. */
 function OfficialVoucher({ receipt }: { receipt: PortalReceipt }) {
+  const receivedDate = receipt.received_at.slice(0, 10).split("-").reverse().join("/");
   return (
     <div className="receipt" style={{ borderWidth: 3 }}>
+      <div className="seal" aria-hidden>
+        <span>Coltebienes S.A.</span>
+        <strong>Radicado</strong>
+        <small>{receivedDate}</small>
+        <span>Brevetto</span>
+      </div>
       <div className="receipt-head">
-        <div>
-          <strong>COLTEBIENES S.A.</strong>
-          <div className="small muted">Sistema de Gestión Documental Brevetto · Portal de Radicación Web</div>
-          <div className="small muted">Comprobante Oficial de Radicación</div>
+        <div className="receipt-brand">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/coltebienes-logo.png" alt="Coltebienes S.A." />
+          <div className="receipt-kicker">Sistema de Gestión Documental Brevetto · Portal de Radicación Web</div>
+          <h2 style={{ margin: "0.25rem 0 0" }}>Comprobante Oficial de Radicación</h2>
         </div>
-        <div className="right">
-          <div className="small muted">Número de radicado</div>
-          <div className="filing">{receipt.filing_number}</div>
+        <div className="right" style={{ paddingRight: 150 }}>
+          <div className="receipt-kicker">Número de radicado</div>
+          <FilingStamp value={receipt.filing_number} size="lg" plain />
         </div>
       </div>
       <dl>
@@ -303,10 +365,17 @@ function OfficialVoucher({ receipt }: { receipt: PortalReceipt }) {
         <dt>Firma digital del comprobante</dt>
         <dd className="mono small">{receipt.receipt_signature}</dd>
       </dl>
-      <p className="small muted" style={{ marginTop: "1rem", marginBottom: 0 }}>
-        Este comprobante certifica la recepción del documento en la fecha y hora indicadas. Su autenticidad puede
-        verificarse con el número de radicado, la huella SHA-256 y la firma digital. Generado electrónicamente por Brevetto.
-      </p>
+      <div className="receipt-foot">
+        <p className="small muted" style={{ margin: 0, maxWidth: 420 }}>
+          Este comprobante certifica la recepción del documento en la fecha y hora indicadas. Su autenticidad puede
+          verificarse con el número de radicado, la huella SHA-256, la firma digital o escaneando el código QR.
+          Generado electrónicamente por Brevetto.
+        </p>
+        <div className="right">
+          <VerificationQr receipt={receipt} />
+          <div className="small muted" style={{ marginTop: 4 }}>Verificación</div>
+        </div>
+      </div>
     </div>
   );
 }

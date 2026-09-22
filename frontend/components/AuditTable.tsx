@@ -5,25 +5,38 @@ import { useState } from "react";
 import { formatDateTime } from "@/lib/format";
 import type { AuditLogEntry } from "@/lib/types";
 import { Empty } from "./DataState";
+import { FilingStamp } from "./FilingStamp";
 import { Modal } from "./Modal";
 
+/** Sello de inmutabilidad: la tabla AuditLog es append-only por triggers de PostgreSQL. */
 export function ImmutableBadge() {
   return (
-    <span className="badge badge-immutable" title="Tabla append-only: triggers BEFORE UPDATE/DELETE en PostgreSQL 16 (migración documents.0002)">
+    <span
+      className="badge badge-immutable"
+      title="Tabla append-only: triggers BEFORE UPDATE/DELETE en PostgreSQL 16 (migración documents.0002)"
+    >
       🔒 Registro Inmutable · PostgreSQL Trigger Protected
     </span>
   );
 }
 
-const ACTION_CLASS: Record<string, string> = {
-  CARGA: "badge-RECIBIDO",
-  CLASIFICACION_IA: "badge-PROCESANDO",
-  VALIDACION_HUMANA: "badge-PROCESADO",
-  ACTUALIZACION_METADATOS: "badge-neutral",
-  CONSULTA_VISUAL: "badge-neutral",
-  DESCARGA: "badge-neutral",
-  ALERTA_VENCIMIENTO: "badge-REQUIERE_REVISION",
+const ACTION_ICON: Record<string, string> = {
+  CARGA: "⇪",
+  CLASIFICACION_IA: "✦",
+  VALIDACION_HUMANA: "✓",
+  ACTUALIZACION_METADATOS: "✎",
+  CONSULTA_VISUAL: "👁",
+  DESCARGA: "⬇",
+  ALERTA_VENCIMIENTO: "⚠",
 };
+
+export function ActionBadge({ action, label }: { action: string; label: string }) {
+  return (
+    <span className={`badge badge-action-${action}`}>
+      <span aria-hidden>{ACTION_ICON[action] ?? "•"}</span> {label}
+    </span>
+  );
+}
 
 function summarizeDetails(details: Record<string, unknown>): string {
   const parts: string[] = [];
@@ -73,14 +86,14 @@ export function AuditTable({ entries, showDocument = true, showContract = true }
           <tbody>
             {entries.map((entry) => (
               <tr key={entry.id}>
-                <td className="nowrap">{formatDateTime(entry.timestamp)}</td>
+                <td className="nowrap small">{formatDateTime(entry.timestamp)}</td>
                 <td>
-                  <span className={`badge ${ACTION_CLASS[entry.action] ?? "badge-neutral"}`}>{entry.action_label}</span>
+                  <ActionBadge action={entry.action} label={entry.action_label} />
                 </td>
                 {showDocument && (
                   <td>
-                    <Link href={`/admin/documents/${entry.document}`} className="mono small">
-                      {entry.filing_number}
+                    <Link href={`/admin/documents/${entry.document}`}>
+                      <FilingStamp value={entry.filing_number} />
                     </Link>
                     {entry.original_filename && (
                       <div className="small muted truncate" style={{ maxWidth: 200 }}>
@@ -92,13 +105,17 @@ export function AuditTable({ entries, showDocument = true, showContract = true }
                 {showContract && (
                   <td className="nowrap">
                     {entry.contract_id ? (
-                      <Link href={`/admin/contracts/${entry.contract_id}`}>{entry.contract_number}</Link>
+                      <Link href={`/admin/contracts/${entry.contract_id}`} className="mono small">
+                        {entry.contract_number}
+                      </Link>
                     ) : (
                       <span className="muted">—</span>
                     )}
                   </td>
                 )}
-                <td className="nowrap">{entry.performed_by ?? <span className="muted">Sistema / IA</span>}</td>
+                <td className="nowrap">
+                  {entry.performed_by ?? <span className="badge badge-action-CLASIFICACION_IA">✦ Sistema / IA</span>}
+                </td>
                 <td className="mono small nowrap">{entry.ip_address ?? "—"}</td>
                 <td className="small muted truncate" style={{ maxWidth: 260 }}>
                   {summarizeDetails(entry.details ?? {})}
@@ -118,7 +135,7 @@ export function AuditTable({ entries, showDocument = true, showContract = true }
         <Modal
           title={
             <span className="row">
-              {selected.action_label} <ImmutableBadge />
+              <ActionBadge action={selected.action} label={selected.action_label} /> <ImmutableBadge />
             </span>
           }
           onClose={() => setSelected(null)}
@@ -130,13 +147,13 @@ export function AuditTable({ entries, showDocument = true, showContract = true }
             <dd>{formatDateTime(selected.timestamp)}</dd>
             <dt>Documento</dt>
             <dd>
-              <Link href={`/admin/documents/${selected.document}`} className="mono">
-                {selected.filing_number}
+              <Link href={`/admin/documents/${selected.document}`}>
+                <FilingStamp value={selected.filing_number} />
               </Link>
               {selected.original_filename ? <span className="muted"> · {selected.original_filename}</span> : null}
             </dd>
             <dt>Contrato</dt>
-            <dd>{selected.contract_number ?? <span className="muted">sin asociar</span>}</dd>
+            <dd className="mono">{selected.contract_number ?? <span className="muted">sin asociar</span>}</dd>
             <dt>Usuario</dt>
             <dd>{selected.performed_by ?? "Sistema / IA"}</dd>
             <dt>IP · agente</dt>

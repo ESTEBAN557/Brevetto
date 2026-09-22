@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ErrorBox, Empty, Loading } from "@/components/DataState";
+import { FilingStamp } from "@/components/FilingStamp";
 import { usePolling } from "@/hooks/usePolling";
 import { documentsApi } from "@/lib/api";
 import { CHANNEL_LABELS, formatConfidence, formatDateTime } from "@/lib/format";
@@ -41,7 +42,9 @@ export default function ReviewInboxPage() {
                   const ai = doc.ai_extracted_data ?? {};
                   return (
                     <tr key={doc.id}>
-                      <td className="mono nowrap">{doc.filing_number}</td>
+                      <td className="nowrap">
+                        <FilingStamp value={doc.filing_number} />
+                      </td>
                       <td className="truncate" style={{ maxWidth: 200 }}>
                         {doc.original_filename}
                       </td>

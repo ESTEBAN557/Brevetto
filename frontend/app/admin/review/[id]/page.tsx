@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ContractPicker } from "@/components/ContractPicker";
 import { ErrorBox, Loading } from "@/components/DataState";
+import { FilingStamp } from "@/components/FilingStamp";
 import { PdfViewer } from "@/components/PdfViewer";
 import { StatusBadge } from "@/components/StatusBadge";
 import { documentsApi, documentTypesApi } from "@/lib/api";
@@ -102,7 +103,7 @@ export default function ReviewDocumentPage() {
       <div className="page-header">
         <div>
           <h1 className="row">
-            <span className="mono">{doc.filing_number}</span> <StatusBadge status={doc.processing_status} />
+            <FilingStamp value={doc.filing_number} size="lg" /> <StatusBadge status={doc.processing_status} />
           </h1>
           <p>
             {doc.original_filename} · {formatBytes(doc.file_size_bytes)} · {CHANNEL_LABELS[doc.source_channel]} ·

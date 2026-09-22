@@ -36,9 +36,18 @@ export default function LoginPage() {
 
   return (
     <main className="landing">
-      <div className="card" style={{ maxWidth: 420 }}>
-        <h1>Ingreso administrativo</h1>
-        <p className="muted">Personal de Coltebienes S.A.</p>
+      <div className="card" style={{ maxWidth: 440 }}>
+        <div className="brand-lockup">
+          <div className="brand-chip">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/coltebienes-logo.png" alt="Coltebienes S.A." />
+          </div>
+          <div>
+            <div className="kicker">Brevetto · Portal administrativo</div>
+            <h1 style={{ margin: 0 }}>Ingreso</h1>
+          </div>
+        </div>
+        <p className="muted">Personal de Coltebienes S.A. Sus acciones quedan registradas en la bitácora inmutable.</p>
         <form onSubmit={handleSubmit} className="stack">
           <label className="field">
             Usuario

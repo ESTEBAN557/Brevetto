@@ -27,7 +27,12 @@ export function KpiCards() {
   return (
     <section style={{ marginBottom: "1.25rem" }}>
       <div className="row row-between" style={{ marginBottom: "0.6rem" }}>
-        <h2 style={{ margin: 0 }}>Indicadores ejecutivos</h2>
+        <div>
+          <div className="small muted" style={{ fontFamily: "var(--font-ui)", letterSpacing: "0.12em", textTransform: "uppercase", fontSize: "0.68rem" }}>
+            Coltebienes S.A. · Eficiencia ganada
+          </div>
+          <h2 style={{ margin: 0 }}>Indicadores ejecutivos</h2>
+        </div>
         <label className="row small muted">
           Periodo
           <select value={days} onChange={(e) => setDays(Number(e.target.value))} style={{ width: 130 }}>
@@ -58,7 +63,7 @@ export function KpiCards() {
             {data ? `${data.ai.auto_corrected_by_staff} corrección(es) del personal · confianza media ${percent(data.ai.average_confidence)}` : ""}
           </div>
         </div>
-        <div className="card kpi">
+        <div className="card kpi kpi-info">
           <div className="kpi-value">{data ? duration(data.processing.average_seconds_to_classification) : "…"}</div>
           <div className="kpi-label">Radicación → clasificación</div>
           <div className="kpi-foot">tiempo promedio del pipeline asíncrono</div>
@@ -70,14 +75,14 @@ export function KpiCards() {
             {data ? `${data.processing.manual_minutes_per_document_assumption} min manuales por documento evitados` : ""}
           </div>
         </div>
-        <div className={`card kpi ${data && data.documents.pending_review > 0 ? "kpi-warning" : ""}`}>
+        <div className={`card kpi ${data && data.documents.pending_review > 0 ? "kpi-warning" : "kpi-success"}`}>
           <div className="kpi-value">{data ? data.documents.pending_review : "…"}</div>
           <div className="kpi-label">Pendientes de validación</div>
           <div className="kpi-foot">
             {data ? `${data.documents.total} documentos · ${data.documents.filed_in_period} radicados en el periodo` : ""}
           </div>
         </div>
-        <div className={`card kpi ${data && data.expirations.expired > 0 ? "kpi-danger" : data && data.expirations.total > 0 ? "kpi-warning" : ""}`}>
+        <div className={`card kpi ${data && data.expirations.expired > 0 ? "kpi-danger" : data && data.expirations.total > 0 ? "kpi-warning" : "kpi-success"}`}>
           <div className="kpi-value">{data ? data.expirations.total : "…"}</div>
           <div className="kpi-label">Vencidos o por vencer</div>
           <div className="kpi-foot">

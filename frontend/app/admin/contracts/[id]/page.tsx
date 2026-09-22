@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuditTable, ImmutableBadge } from "@/components/AuditTable";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
+import { FilingStamp } from "@/components/FilingStamp";
 import { ErrorBox, Empty, Loading } from "@/components/DataState";
 import { NeutralBadge, StatusBadge } from "@/components/StatusBadge";
 import { contractsApi } from "@/lib/api";
@@ -119,11 +120,11 @@ export default function ContractDetailPage() {
           </p>
         </div>
         <div className="row">
-          <button type="button" className="btn-secondary" onClick={exportZip} disabled={exporting || documents.length === 0} title="Descarga todos los documentos del expediente y un manifest.json con hashes SHA-256">
+          <button type="button" className="btn-ink" onClick={exportZip} disabled={exporting || documents.length === 0} title="Descarga todos los documentos del expediente y un manifest.json con hashes SHA-256">
             {exporting ? <span className="spinner" /> : "⬇"} Descargar Expediente (.ZIP)
           </button>
           <Link href="/admin/upload" className="btn">
-            Radicar en este expediente
+            ⇪ Radicar en este expediente
           </Link>
         </div>
       </div>
@@ -188,7 +189,9 @@ export default function ContractDetailPage() {
                     const days = daysUntil(doc.expiration_date);
                     return (
                       <tr key={doc.id}>
-                        <td className="mono nowrap">{doc.filing_number}</td>
+                        <td className="nowrap">
+                          <FilingStamp value={doc.filing_number} />
+                        </td>
                         <td>{doc.document_type?.name ?? "—"}</td>
                         <td className="truncate" style={{ maxWidth: 220 }}>
                           {doc.original_filename}
