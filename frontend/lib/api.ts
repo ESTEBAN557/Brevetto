@@ -1,8 +1,10 @@
 // Cliente HTTP hacia la API de Brevetto: JWT, refresh automático y helpers tipados.
 import { clearTokens, getTokens, saveTokens } from "./auth";
 import type {
+  AuditActionCount,
   AuditLogEntry,
   BatchUploadResponse,
+  MetricsSummary,
   Client,
   Contract,
   Document,
@@ -107,6 +109,36 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   return data as T;
 }
 
+/** Descarga binaria autenticada (el JWT viaja en el header, así que un <a href> no sirve). */
+export async function apiFetchBlob(path: string): Promise<{ blob: Blob; filename: string | null }> {
+  const doRequest = (access?: string | null) =>
+    fetch(buildUrl(path), { headers: access ? { Authorization: `Bearer ${access}` } : {} });
+
+  let response = await doRequest(getTokens()?.access);
+  if (response.status === 401) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) response = await doRequest(refreshed);
+  }
+  if (!response.ok) {
+    const text = await response.text();
+    throw new ApiError(response.status, text ? safeJson(text) : null);
+  }
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+  return { blob: await response.blob(), filename: match ? decodeURIComponent(match[1]) : null };
+}
+
+export function triggerBrowserDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 function safeJson(text: string): unknown {
   try {
     return JSON.parse(text);
@@ -153,7 +185,25 @@ export const contractsApi = {
   create: (body: Record<string, unknown>) => apiFetch<Contract>("/contracts/", { method: "POST", body }),
   documents: (id: string, query?: RequestOptions["query"]) =>
     apiFetch<Paginated<Document>>(`/contracts/${id}/documents/`, { query }),
-  auditTrail: (id: string) => apiFetch<Paginated<AuditLogEntry>>(`/contracts/${id}/audit-trail/`),
+  auditTrail: (id: string, query?: RequestOptions["query"]) =>
+    apiFetch<Paginated<AuditLogEntry>>(`/contracts/${id}/audit-trail/`, { query }),
+  exportZip: async (id: string, fallbackName = "expediente.zip") => {
+    const { blob, filename } = await apiFetchBlob(`/contracts/${id}/export-zip/`);
+    triggerBrowserDownload(blob, filename ?? fallbackName);
+    return filename ?? fallbackName;
+  },
+};
+
+// -------------------------------------------------------------- auditoría ---
+export const auditApi = {
+  list: (query?: RequestOptions["query"]) => apiFetch<Paginated<AuditLogEntry>>("/audit/", { query }),
+  get: (id: string) => apiFetch<AuditLogEntry>(`/audit/${id}/`),
+  actions: (query?: RequestOptions["query"]) => apiFetch<AuditActionCount[]>("/audit/actions/", { query }),
+};
+
+// --------------------------------------------------------------- métricas ---
+export const metricsApi = {
+  summary: (days = 30) => apiFetch<MetricsSummary>("/metrics/summary/", { query: { days } }),
 };
 
 export const clientsApi = {

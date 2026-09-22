@@ -7,6 +7,35 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.4.0] - Sprint 3 (Auditoría Global, Exportación de Expedientes y Métricas Ejecutivas) - 2026-09-21
+
+### ✨ Añadido (Added)
+- **Módulo Global de Auditoría e Inmutabilidad (`US-023`, `US-024`, `US-025`):**
+  - `AuditLogViewSet` de solo lectura en `GET /api/v1/audit/` y `GET /api/v1/audit/{id}/` (paginado, JWT). Los métodos de escritura responden `405`; la tabla sigue protegida por los triggers `BEFORE UPDATE/DELETE` de PostgreSQL.
+  - `AuditLogFilter`: `timestamp_from`/`timestamp_to` (fecha ISO que cubre el día completo o fecha-hora ISO), `action` múltiple, `performed_by` (username o `system` para eventos de IA), `filing_number`, `document`, `contract`, `contract_number`, `ip_address` y `q` (texto libre sobre el JSON de `details`, radicado, archivo, contrato, usuario e IP).
+  - `GET /api/v1/audit/actions/`: catálogo de acciones con conteos que respeta los filtros activos.
+  - `AuditLogSerializer` expone `original_filename`, `contract_id`, `contract_number` e `immutable`.
+  - `GET /api/v1/contracts/{id}/audit-trail/` acepta `?action=A,B`.
+  - Frontend `/admin/audit`: tabla interactiva, buscador, filtros por acción/usuario/fecha/radicado/contrato/IP, paginación, modal para inspeccionar el payload JSON y badge "Registro Inmutable · PostgreSQL Trigger Protected".
+  - Frontend `/admin/contracts/[id]`: pestaña "Bitácora del Expediente" con filtro por acción, inspector JSON y badge de inmutabilidad.
+- **Exportación Masiva del Expediente en ZIP (`US-020`):**
+  - `GET /api/v1/contracts/{id}/export-zip/` en `ContractViewSet`: genera el ZIP en *streaming* (`StreamingHttpResponse`, sin disco ni carga completa en memoria) con los PDF organizados por categoría documental y `manifest.json` (contrato, cliente, fecha, generado por, lista de documentos con radicado, tipo, fechas, estado, canal, tamaño y hash SHA-256; archivos ausentes en el bucket quedan listados en `missing_files`).
+  - Registro en `AuditLog` de la acción `DESCARGA` con `{"export_type": "full_record_zip", "document_count": n, "contract_number": ...}` por documento exportado.
+  - Frontend: botón "Descargar Expediente (.ZIP)" en el encabezado del expediente (descarga autenticada vía `fetch` + `Blob`).
+- **Visualizador de Documentos y Comprobante Oficial (`US-019`):**
+  - Modal de previsualización de PDF/imagen (URL prefirmada de `view-url`, con fallback a descarga segura) en la bandeja `/admin`, en la tabla de expedientes y en el expediente del contrato.
+  - Portal público: tras radicar, botón "Previsualizar comprobante oficial" que abre el comprobante en modal con impresión aislada (`RAD-YYYYMMDD-XXXXXX`, fecha y hora, contrato, huella SHA-256 y firma digital).
+- **Métricas Ejecutivas de Gestión Documental:**
+  - `GET /api/v1/metrics/summary/?days=30`: total y desglose de documentos por estado (con alias `RECEIVED`/`PROCESSING`/`NEEDS_REVIEW`/`CLASSIFIED`/`FAILED`), canal y categoría; tasa de automatización de la IA (% clasificados sin intervención), tasa de acierto (% auto-clasificados que no requirieron corrección de tipo), confianza promedio; tiempo promedio radicación → clasificación; ahorro estimado en minutos/horas (`MANUAL_MINUTES_PER_DOCUMENT`, 8 por defecto); vencimientos, contratos y actividad de auditoría.
+  - Frontend: fila de KPIs ejecutivos en la parte superior de `/admin` (automatización, acierto, tiempo de clasificación, horas ahorradas, pendientes, alertas) con selector de periodo.
+- **Pruebas:** nuevas suites `test_audit_api.py`, `test_export_zip.py` y `test_metrics.py`. La suite completa se mantiene al 100 %.
+
+### 🔄 Cambiado (Changed)
+- `documents/urls.py` registra el router `audit` y la ruta `metrics/summary/`.
+- Nuevos servicios `apps/documents/services/export.py` y `apps/documents/services/metrics.py`.
+
+---
+
 ## [0.3.0] - Sprint 2 (Búsqueda Avanzada, Alertas de Vencimiento y Datos de Demostración) - 2026-09-21
 
 ### ✨ Añadido (Added)

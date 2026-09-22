@@ -226,7 +226,17 @@ class PresignedUrlSerializer(serializers.Serializer):
 class AuditLogSerializer(serializers.ModelSerializer):
     performed_by = serializers.CharField(source="performed_by.username", read_only=True, default=None)
     filing_number = serializers.CharField(source="document.filing_number", read_only=True)
+    original_filename = serializers.CharField(source="document.original_filename", read_only=True)
+    contract_id = serializers.UUIDField(source="document.digital_record.contract_id", read_only=True, default=None)
+    contract_number = serializers.CharField(
+        source="document.digital_record.contract.contract_number", read_only=True, default=None
+    )
     action_label = serializers.CharField(source="get_action_display", read_only=True)
+    immutable = serializers.SerializerMethodField()
+
+    def get_immutable(self, obj) -> bool:
+        # Garantizado por triggers BEFORE UPDATE/DELETE en PostgreSQL (migración documents.0002).
+        return True
 
     class Meta:
         model = AuditLog
@@ -234,6 +244,9 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "id",
             "document",
             "filing_number",
+            "original_filename",
+            "contract_id",
+            "contract_number",
             "action",
             "action_label",
             "performed_by",
@@ -241,5 +254,6 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "user_agent",
             "timestamp",
             "details",
+            "immutable",
         )
         read_only_fields = fields

@@ -12,6 +12,7 @@ const NAV = [
   { href: "/admin/upload", label: "Radicar documentos" },
   { href: "/admin/review", label: "Validación HITL" },
   { href: "/admin/contracts", label: "Contratos y expedientes" },
+  { href: "/admin/audit", label: "Auditoría global" },
 ];
 
 export function AdminShell({ children }: { children: ReactNode }) {

@@ -6,6 +6,7 @@ import { Suspense, useState } from "react";
 import { DocumentTable } from "@/components/DocumentTable";
 import { ErrorBox, Loading } from "@/components/DataState";
 import { ExpiringPanel } from "@/components/ExpiringPanel";
+import { KpiCards } from "@/components/KpiCards";
 import { usePolling } from "@/hooks/usePolling";
 import { documentsApi } from "@/lib/api";
 import { CATEGORY_LABELS, CATEGORY_ORDER, CHANNEL_LABELS, STATUS_LABELS } from "@/lib/format";
@@ -112,6 +113,8 @@ function Inbox() {
           </Link>
         </div>
       </div>
+
+      <KpiCards />
 
       <div className="grid grid-5" style={{ marginBottom: "1.25rem" }}>
         {STATUSES.map((s) => (

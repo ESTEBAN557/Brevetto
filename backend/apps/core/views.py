@@ -1,6 +1,7 @@
 """Endpoints REST del núcleo: /api/v1/clients/, /api/v1/contracts/, /api/v1/document-types/."""
 from __future__ import annotations
 
+from django.http import StreamingHttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
@@ -13,6 +14,12 @@ from apps.core.serializers import ClientSerializer, ContractSerializer, Document
 from apps.core.services import create_contract
 from apps.documents.models import AuditLog
 from apps.documents.serializers import AuditLogSerializer, DocumentSerializer
+from apps.documents.services.export import (
+    export_documents,
+    export_filename,
+    iter_record_zip,
+    log_record_export,
+)
 
 
 class ClientViewSet(viewsets.ModelViewSet):
@@ -71,15 +78,35 @@ class ContractViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["get"], url_path="export-zip")
+    def export_zip(self, request, pk=None):
+        """US-020: descarga el expediente completo en ZIP (streaming) con manifest.json."""
+        contract = self.get_object()
+        documents = list(export_documents(contract))
+        log_record_export(contract, documents, request=request)
+
+        filename = export_filename(contract)
+        response = StreamingHttpResponse(
+            iter_record_zip(contract, documents, generated_by=getattr(request.user, "username", None)),
+            content_type="application/zip",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response["X-Document-Count"] = str(len(documents))
+        response["Cache-Control"] = "no-store"
+        return response
+
     @action(detail=True, methods=["get"], url_path="audit-trail")
     def audit_trail(self, request, pk=None):
         """Historial de todas las acciones sobre los documentos del expediente."""
         contract = self.get_object()
         logs = (
             AuditLog.objects.filter(document__digital_record__contract=contract)
-            .select_related("performed_by", "document")
+            .select_related("performed_by", "document", "document__digital_record__contract")
             .order_by("-timestamp")
         )
+        actions = request.query_params.get("action")
+        if actions:
+            logs = logs.filter(action__in=[a.strip() for a in actions.split(",") if a.strip()])
         page = self.paginate_queryset(logs)
         serializer = AuditLogSerializer(page if page is not None else logs, many=True)
         if page is not None:

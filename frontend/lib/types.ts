@@ -110,23 +110,72 @@ export interface PresignedUrl {
   expires_in_seconds: number;
 }
 
+export type AuditAction =
+  | "CARGA"
+  | "CLASIFICACION_IA"
+  | "VALIDACION_HUMANA"
+  | "ACTUALIZACION_METADATOS"
+  | "CONSULTA_VISUAL"
+  | "DESCARGA"
+  | "ALERTA_VENCIMIENTO";
+
 export interface AuditLogEntry {
   id: string;
   document: string;
   filing_number: string;
-  action:
-    | "CARGA"
-    | "CLASIFICACION_IA"
-    | "VALIDACION_HUMANA"
-    | "ACTUALIZACION_METADATOS"
-    | "CONSULTA_VISUAL"
-    | "DESCARGA";
+  original_filename?: string;
+  contract_id?: string | null;
+  contract_number?: string | null;
+  action: AuditAction;
   action_label: string;
   performed_by: string | null;
   ip_address: string | null;
   user_agent: string;
   timestamp: string;
   details: Record<string, unknown>;
+  immutable?: boolean;
+}
+
+export interface AuditActionCount {
+  code: AuditAction;
+  label: string;
+  count: number;
+}
+
+export interface MetricsSummary {
+  generated_at: string;
+  period_days: number;
+  documents: {
+    total: number;
+    processed: number;
+    pending_review: number;
+    filed_in_period: number;
+    filed_last_24h: number;
+    portal_submissions: number;
+    by_status: { code: ProcessingStatus; alias: string; label: string; count: number }[];
+    by_channel: { code: SourceChannel; label: string; count: number }[];
+    by_category: { category: DocumentCategory; count: number }[];
+  };
+  ai: {
+    documents_analyzed: number;
+    auto_classified: number;
+    sent_to_review: number;
+    human_validated: number;
+    auto_corrected_by_staff: number;
+    automation_rate: number | null;
+    accuracy_rate: number | null;
+    average_confidence: number | null;
+    confidence_threshold: number;
+  };
+  processing: {
+    average_seconds_to_classification: number | null;
+    manual_minutes_per_document_assumption: number;
+    estimated_minutes_saved: number;
+    estimated_hours_saved: number;
+  };
+  expirations: { window_days: number; total: number; expired: number; critical_7_days: number; warning: number; alerts_emitted: number };
+  contracts: { total: number; active: number; with_documents: number };
+  audit: { total_events: number; events_in_period: number; views_and_downloads: number };
 }
 
 export interface Client {

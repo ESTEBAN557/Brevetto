@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { ErrorBox } from "@/components/DataState";
 import { FileDrop } from "@/components/FileDrop";
+import { Modal, printModal } from "@/components/Modal";
 import { ApiError, portalApi } from "@/lib/api";
 import { formatBytes, formatDate } from "@/lib/format";
 import type { PortalReceipt, PortalSession } from "@/lib/types";
@@ -22,6 +23,7 @@ export default function PortalFilingPage() {
   const [receipt, setReceipt] = useState<PortalReceipt | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showVoucher, setShowVoucher] = useState(false);
 
   const selectedType = useMemo(() => session?.document_types.find((t) => t.code === typeCode), [session, typeCode]);
 
@@ -225,8 +227,11 @@ export default function PortalFilingPage() {
             </p>
           </div>
           <div className="row no-print">
-            <button type="button" onClick={() => window.print()}>
-              Descargar / imprimir comprobante
+            <button type="button" onClick={() => setShowVoucher(true)}>
+              Previsualizar comprobante oficial
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => window.print()}>
+              Imprimir esta página
             </button>
             <button type="button" className="btn-secondary" onClick={() => { setStep(2); setFiles([]); setReceipt(null); }}>
               Radicar otro documento
@@ -235,8 +240,73 @@ export default function PortalFilingPage() {
               Finalizar
             </button>
           </div>
+
+          {showVoucher && (
+            <Modal
+              size="narrow"
+              title="Comprobante Oficial de Radicación"
+              onClose={() => setShowVoucher(false)}
+              footer={
+                <>
+                  <button type="button" className="btn-secondary" onClick={() => setShowVoucher(false)}>
+                    Cerrar
+                  </button>
+                  <button type="button" onClick={printModal}>
+                    Imprimir / guardar como PDF
+                  </button>
+                </>
+              }
+            >
+              <OfficialVoucher receipt={receipt} />
+            </Modal>
+          )}
         </div>
       )}
     </main>
+  );
+}
+
+/** Comprobante oficial (US-019): documento imprimible con el radicado RAD-YYYYMMDD-XXXXXX. */
+function OfficialVoucher({ receipt }: { receipt: PortalReceipt }) {
+  return (
+    <div className="receipt" style={{ borderWidth: 3 }}>
+      <div className="receipt-head">
+        <div>
+          <strong>COLTEBIENES S.A.</strong>
+          <div className="small muted">Sistema de Gestión Documental Brevetto · Portal de Radicación Web</div>
+          <div className="small muted">Comprobante Oficial de Radicación</div>
+        </div>
+        <div className="right">
+          <div className="small muted">Número de radicado</div>
+          <div className="filing">{receipt.filing_number}</div>
+        </div>
+      </div>
+      <dl>
+        <dt>Fecha y hora de recepción</dt>
+        <dd>{receipt.received_at_display}</dd>
+        <dt>Contrato</dt>
+        <dd className="mono">{receipt.contract_number}</dd>
+        <dt>Titular del contrato</dt>
+        <dd>{receipt.client_name}</dd>
+        <dt>Tipo de documento</dt>
+        <dd>{receipt.document_type}</dd>
+        <dt>Archivo recibido</dt>
+        <dd>
+          {receipt.original_filename} ({formatBytes(receipt.file_size_bytes)})
+        </dd>
+        <dt>Radicado por</dt>
+        <dd>{receipt.sender_name}</dd>
+        <dt>Estado</dt>
+        <dd>Recibido · en verificación por Coltebienes</dd>
+        <dt>Huella digital SHA-256</dt>
+        <dd className="mono small">{receipt.file_hash}</dd>
+        <dt>Firma digital del comprobante</dt>
+        <dd className="mono small">{receipt.receipt_signature}</dd>
+      </dl>
+      <p className="small muted" style={{ marginTop: "1rem", marginBottom: 0 }}>
+        Este comprobante certifica la recepción del documento en la fecha y hora indicadas. Su autenticidad puede
+        verificarse con el número de radicado, la huella SHA-256 y la firma digital. Generado electrónicamente por Brevetto.
+      </p>
+    </div>
   );
 }

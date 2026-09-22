@@ -7,6 +7,7 @@ request es la subida al bucket; el análisis con IA corre en Celery.
 from __future__ import annotations
 
 from django.db import transaction
+from django.db.models import Count
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, mixins, status, viewsets
@@ -15,8 +16,11 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.documents.filters import DocumentFilter
+from rest_framework.views import APIView
+
+from apps.documents.filters import AuditLogFilter, DocumentFilter
 from apps.documents.models import AuditLog, Document
+from apps.documents.services import metrics as metrics_service
 from apps.documents.services.expirations import alert_window_days, expiring_documents_queryset
 from apps.documents.serializers import (
     AuditLogSerializer,
@@ -290,3 +294,51 @@ class DocumentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets
         if page is not None:
             return self.get_paginated_response(serializer.data)
         return Response(serializer.data)
+
+
+class AuditLogViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
+    """Módulo global de auditoría (US-023/024/025): solo lectura, paginado y filtrable.
+
+    La tabla es append-only: además del ORM, triggers BEFORE UPDATE/DELETE en
+    PostgreSQL impiden cualquier modificación o borrado (migración documents.0002).
+    """
+
+    queryset = AuditLog.objects.select_related(
+        "performed_by", "document", "document__digital_record__contract"
+    ).all()
+    serializer_class = AuditLogSerializer
+    permission_classes = (IsAuthenticated,)
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
+    filterset_class = AuditLogFilter
+    ordering_fields = ("timestamp", "action")
+    ordering = ("-timestamp",)
+
+    @action(detail=False, methods=["get"], url_path="actions")
+    def actions(self, request):
+        """Catálogo de acciones con conteos, para los selectores del frontend."""
+        counts = dict(
+            self.filter_queryset(self.get_queryset())
+            .values_list("action")
+            .annotate(total=Count("id"))
+            .values_list("action", "total")
+        )
+        return Response(
+            [
+                {"code": choice.value, "label": choice.label, "count": counts.get(choice.value, 0)}
+                for choice in AuditLog.Action
+            ]
+        )
+
+
+class MetricsSummaryView(APIView):
+    """KPIs ejecutivos de gestión documental para Coltebienes."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        try:
+            period_days = int(request.query_params.get("days", 30))
+        except ValueError:
+            return Response({"days": "Debe ser un entero."}, status=status.HTTP_400_BAD_REQUEST)
+        period_days = max(1, min(period_days, 365))
+        return Response(metrics_service.summary(period_days))
