@@ -20,11 +20,9 @@ from apps.documents.services import create_document_record
 
 User = get_user_model()
 
-
 @pytest.fixture
 def user(db):
     return User.objects.create_user(username="isabella", password="secret-123")
-
 
 @pytest.fixture
 def api_client(user):
@@ -32,29 +30,26 @@ def api_client(user):
     client.force_authenticate(user=user)
     return client
 
-
 VALID_PAYLOAD = {
     "original_filename": "cuenta_cobro_sep.pdf",
+    "file_path": "brevetto-docs/2026/09/cuenta_cobro_sep.pdf",
     "file_size_bytes": 1048576,
     "mime_type": "application/pdf",
-    "source_channel": Document.SourceChannel.DIGITAL_INTERNAL,
 }
-
 
 @pytest.mark.django_db
 class TestCreateDocumentRecordService:
     """Pruebas del servicio de creación (nivel unitario)."""
 
-    def test_service_creates_record_with_initial_status(self, user):
-        document = create_document_record(registered_by=user, **VALID_PAYLOAD)
+    def test_service_creates_record_with_initial_status(self):
+        document = create_document_record(**VALID_PAYLOAD)
 
         assert document.pk is not None
         assert document.processing_status == Document.ProcessingStatus.RECEIVED
-        assert document.registered_by == user
 
-    def test_service_generates_and_associates_filing_number(self, user):
-        # TC-018: el radicado se genera y queda asociado al registro.
-        document = create_document_record(registered_by=user, **VALID_PAYLOAD)
+    def test_service_generates_and_associates_filing_number(self):
+        # TC-018: el radicado se genera (en Document.save) y queda asociado.
+        document = create_document_record(**VALID_PAYLOAD)
 
         assert document.filing_number
         assert document.filing_number.startswith("RAD-")
@@ -62,16 +57,15 @@ class TestCreateDocumentRecordService:
         stored = Document.objects.get(pk=document.pk)
         assert stored.filing_number == document.filing_number
 
-    def test_service_stores_record_retrievable(self, user):
+    def test_service_stores_record_retrievable(self):
         # AC-018: el registro queda almacenado y accesible.
-        document = create_document_record(registered_by=user, **VALID_PAYLOAD)
+        document = create_document_record(**VALID_PAYLOAD)
 
         assert Document.objects.filter(pk=document.pk).exists()
 
-
 @pytest.mark.django_db
 class TestCreateDocumentRecordApi:
-    """Pruebas del endpoint POST /api/v1/documents/ (nivel integración)."""
+    """Pruebas del endpoint POST /api/v1/documents/register/ (integración)."""
 
     def test_create_document_success(self, api_client):
         # TC-014 / TC-015: creación exitosa (happy path).
@@ -139,6 +133,10 @@ class TestCreateDocumentRecordApi:
         response = APIClient().post(
             reverse("document-registration"), VALID_PAYLOAD, format="json"
         )
+
+        assert response.status_code in (401, 403)
+        assert Document.objects.count() == 0
+
 
         assert response.status_code in (401, 403)
         assert Document.objects.count() == 0
