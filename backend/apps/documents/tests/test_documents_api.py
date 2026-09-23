@@ -57,6 +57,23 @@ class TestDocumentQueries:
         assert body["document_date"] == "2026-09-20"
         assert body["external_sender_name"] == "Carolina Restrepo"
 
+    def test_retrieve_exposes_processing_status_and_extracted_information(self, api_client, document):
+        document.processing_status = Document.ProcessingStatus.PROCESSED
+        document.ai_extracted_data = {
+            "extracted_text_summary": "Contenido procesado",
+            "confidence_score": 0.93,
+        }
+        document.ai_confidence_score = 0.93
+        document.save()
+
+        response = api_client.get(_detail(document))
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["processing_status"] == "PROCESADO"
+        assert body["ai_extracted_data"]["extracted_text_summary"] == "Contenido procesado"
+        assert body["ai_confidence_score"] == 0.93
+
     def test_filter_by_status_and_search_by_filing_number(self, api_client, document, review_document):
         assert document.pk == review_document.pk  # misma fila, ya en REQUIERE_REVISION
         other = Document.objects.create(

@@ -174,6 +174,8 @@ class TestProcessDocumentContentTask:
         assert stored_document.processing_status == Document.ProcessingStatus.PROCESSED
 
     def test_persistent_error_marks_document_failed_after_max_retries(self, stored_document):
+        original_bytes = default_storage.open(stored_document.file_path, "rb").read()
+
         with patch(EXTRACT_PATH, side_effect=AIExtractionError("Gemini 503")) as extract:
             result = process_document_content_task.apply(args=[str(stored_document.pk)])
 
@@ -185,6 +187,7 @@ class TestProcessDocumentContentTask:
         assert log.details["failed"] is True
         assert log.details["retries"] == process_document_content_task.max_retries
         assert "Gemini 503" in log.details["error"]
+        assert default_storage.open(stored_document.file_path, "rb").read() == original_bytes
 
     def test_unknown_document_is_discarded_gracefully(self):
         result = process_document_content_task.apply(args=[str(uuid4())])
