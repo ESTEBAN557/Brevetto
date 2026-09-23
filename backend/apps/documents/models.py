@@ -60,6 +60,13 @@ class Document(models.Model):
         default=ProcessingStatus.RECEIVED,
         db_index=True,
     )
+    registered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="registered_documents",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -67,6 +74,12 @@ class Document(models.Model):
         ordering = ["-created_at"]
         verbose_name = "Documento"
         verbose_name_plural = "Documentos"
+        indexes = [
+            models.Index(
+                fields=["processing_status", "-created_at"],
+                name="doc_status_created_idx",
+            ),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.filing_number:
@@ -76,32 +89,6 @@ class Document(models.Model):
                 self.filing_number = generate_filing_number()
                 return super().save(*args, **kwargs)
         return super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.filing_number} - {self.original_filename}"
-
-    registered_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="registered_documents",
-    )
-
-    class Meta:
-        verbose_name = "Documento Radicado"
-        verbose_name_plural = "Documentos Radicados"
-        ordering = ["-created_at"]
-        indexes = [
-            models.Index(
-                fields=["processing_status", "-created_at"],
-                name="doc_status_created_idx",
-            ),
-        ]
-
-    def __str__(self):
-        return f"{self.filing_number} - {self.original_filename}"
-
 
     def __str__(self):
         return f"{self.filing_number} - {self.original_filename}"

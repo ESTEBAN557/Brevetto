@@ -1,10 +1,15 @@
 import uuid
 
+import django.db.models.deletion
+from django.conf import settings
 from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [("documents", "0001_filingsequence")]
+    dependencies = [
+        ("documents", "0001_filingsequence"),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    ]
 
     operations = [
         migrations.CreateModel(
@@ -47,6 +52,16 @@ class Migration(migrations.Migration):
                         max_length=30,
                     ),
                 ),
+                (
+                    "registered_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="registered_documents",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
             ],
@@ -54,6 +69,12 @@ class Migration(migrations.Migration):
                 "verbose_name": "Documento",
                 "verbose_name_plural": "Documentos",
                 "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["processing_status", "-created_at"],
+                        name="doc_status_created_idx",
+                    )
+                ],
             },
         ),
     ]
