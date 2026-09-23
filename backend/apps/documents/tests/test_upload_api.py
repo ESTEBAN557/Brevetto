@@ -79,6 +79,22 @@ class TestDocumentUpload:
         assert document.file_path.startswith("expedientes/CONT-2026-042/")
         assert document.audit_logs.get().details["contract_number"] == "CONT-2026-042"
 
+    def test_upload_stores_document_metadata(self, api_client, pdf_factory):
+        response = api_client.post(
+            UPLOAD_URL,
+            {
+                "file": pdf_factory("metadatos.pdf"),
+                "document_date": "2026-09-20",
+                "external_sender_name": "Carolina Restrepo",
+            },
+            format="multipart",
+        )
+
+        assert response.status_code == 201, response.content
+        document = Document.objects.get(pk=response.json()["id"])
+        assert document.document_date.isoformat() == "2026-09-20"
+        assert document.external_sender_name == "Carolina Restrepo"
+
     def test_upload_uses_forwarded_ip_behind_proxy(self, api_client, pdf_factory):
         response = api_client.post(
             UPLOAD_URL,
@@ -120,11 +136,39 @@ class TestDocumentUpload:
         assert Document.objects.count() == 0
         mock_celery_delay.assert_not_called()
 
+    def test_valid_upload_succeeds_after_rejected_attempt(self, api_client, pdf_factory):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        rejected = api_client.post(
+            UPLOAD_URL,
+            {"file": SimpleUploadedFile("malware.exe", b"MZ", content_type="application/octet-stream")},
+            format="multipart",
+        )
+        assert rejected.status_code == 400
+        assert Document.objects.count() == 0
+
+        accepted = api_client.post(UPLOAD_URL, {"file": pdf_factory("recuperado.pdf")}, format="multipart")
+
+        assert accepted.status_code == 201, accepted.content
+        assert accepted.json()["original_filename"] == "recuperado.pdf"
+        assert Document.objects.count() == 1
+
     def test_rejects_mismatched_mime_type(self, api_client, pdf_factory):
         response = api_client.post(
             UPLOAD_URL, {"file": pdf_factory("falso.pdf", content_type="text/plain")}, format="multipart"
         )
         assert response.status_code == 400
+        assert Document.objects.count() == 0
+
+    def test_rejects_invalid_document_date_format(self, api_client, pdf_factory):
+        response = api_client.post(
+            UPLOAD_URL,
+            {"file": pdf_factory("fecha-invalida.pdf"), "document_date": "20/09/2026"},
+            format="multipart",
+        )
+
+        assert response.status_code == 400
+        assert "document_date" in response.json()
         assert Document.objects.count() == 0
 
     def test_rejects_file_over_size_limit(self, api_client, pdf_factory, settings):
@@ -143,6 +187,13 @@ class TestDocumentUpload:
             UPLOAD_URL, {"file": SimpleUploadedFile("vacio.pdf", b"", content_type="application/pdf")}, format="multipart"
         )
         assert response.status_code == 400
+
+    def test_rejects_registration_without_required_file(self, api_client):
+        response = api_client.post(UPLOAD_URL, {}, format="multipart")
+
+        assert response.status_code == 400
+        assert "file" in response.json()
+        assert Document.objects.count() == 0
 
     def test_rejects_portal_channel_from_internal_endpoint(self, api_client, pdf_factory):
         response = api_client.post(
