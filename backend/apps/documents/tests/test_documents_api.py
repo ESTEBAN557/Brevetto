@@ -168,6 +168,26 @@ class TestHumanValidation:
 
 @pytest.mark.django_db
 class TestMetadataUpdate:
+    def test_metadata_update_cannot_change_registration_information(self, api_client, document, user):
+        original_registered_by = document.registered_by
+        original_created_at = document.created_at
+
+        response = api_client.patch(
+            _detail(document, "metadata/"),
+            {
+                "registered_by": str(user.pk),
+                "created_at": "2000-01-01T00:00:00Z",
+                "external_sender_name": "Actualizado",
+            },
+            format="json",
+        )
+
+        assert response.status_code == 200
+        document.refresh_from_db()
+        assert document.registered_by == original_registered_by
+        assert document.created_at == original_created_at
+        assert document.external_sender_name == "Actualizado"
+
     def test_patch_logs_previous_and_new_values(self, api_client, document, invoice_type):
         response = api_client.patch(
             _detail(document, "metadata/"),
