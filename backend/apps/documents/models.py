@@ -9,7 +9,6 @@ import uuid
 from django.conf import settings
 from django.db import models, transaction
 
-
 class FilingSequence(models.Model):
     """Consecutivo diario protegido contra duplicados concurrentes."""
 
@@ -40,7 +39,6 @@ class FilingSequence(models.Model):
         digits = getattr(settings, "FILING_NUMBER_SEQUENCE_DIGITS", 6)
         return f"{prefix}-{target_date:%Y%m%d}-{sequence:0{digits}d}"
 
-
 class TimeStampedModel(models.Model):
     """Base con identificador UUID y marcas de tiempo automáticas."""
 
@@ -50,7 +48,6 @@ class TimeStampedModel(models.Model):
 
     class Meta:
         abstract = True
-
 
 class DocumentType(TimeStampedModel):
     """Catálogo de tipos documentales (versión mínima para US-004)."""
@@ -78,7 +75,6 @@ class DocumentType(TimeStampedModel):
     def __str__(self):
         return f"[{self.category}] {self.name}"
 
-
 class Document(TimeStampedModel):
     """Registro formal de un documento radicado en el sistema (US-004)."""
 
@@ -103,6 +99,12 @@ class Document(TimeStampedModel):
     )
 
     original_filename = models.CharField(max_length=255)
+    file_path = models.CharField(
+        max_length=1000, blank=True, help_text="URI del objeto en S3 / MinIO"
+    )
+    file_hash = models.CharField(
+        max_length=64, blank=True, db_index=True, help_text="Checksum SHA-256"
+    )
     file_size_bytes = models.BigIntegerField()
     mime_type = models.CharField(max_length=100, default="application/pdf")
 
@@ -138,6 +140,10 @@ class Document(TimeStampedModel):
                 name="doc_status_created_idx",
             ),
         ]
+
+    def __str__(self):
+        return f"{self.filing_number} - {self.original_filename}"
+
 
     def __str__(self):
         return f"{self.filing_number} - {self.original_filename}"
