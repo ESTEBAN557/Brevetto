@@ -41,6 +41,8 @@ class TestDocumentQueries:
         assert body["results"][0]["registered_by"] == "analista"
 
     def test_retrieve_exposes_full_metadata(self, api_client, document, contract, document_type):
+        document.document_date = date(2026, 9, 20)
+        document.external_sender_name = "Carolina Restrepo"
         document.digital_record = contract.digital_record
         document.document_type = document_type
         document.save()
@@ -52,6 +54,8 @@ class TestDocumentQueries:
         assert body["client_name"] == "Logística Andina S.A.S."
         assert body["document_type"]["code"] == "POLIZA_CUMPLIMIENTO"
         assert body["file_hash"] == "a" * 64
+        assert body["document_date"] == "2026-09-20"
+        assert body["external_sender_name"] == "Carolina Restrepo"
 
     def test_filter_by_status_and_search_by_filing_number(self, api_client, document, review_document):
         assert document.pk == review_document.pk  # misma fila, ya en REQUIERE_REVISION
