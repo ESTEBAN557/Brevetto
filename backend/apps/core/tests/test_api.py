@@ -67,6 +67,43 @@ class TestContractsApi:
         assert response.status_code == 400
         assert "contract_number" in response.json()
 
+    def test_create_multiple_contracts_provisions_independent_folders(self, api_client, tenant):
+        first = api_client.post(
+            CONTRACTS,
+            {
+                "contract_number": "CONT-2026-081",
+                "client": str(tenant.pk),
+                "property_address": "Local 1",
+                "start_date": "2026-01-01",
+                "end_date": "2026-12-31",
+            },
+            format="json",
+        )
+        second = api_client.post(
+            CONTRACTS,
+            {
+                "contract_number": "CONT-2026-082",
+                "client": str(tenant.pk),
+                "property_address": "Local 2",
+                "start_date": "2026-01-01",
+                "end_date": "2026-12-31",
+            },
+            format="json",
+        )
+
+        assert first.status_code == 201, first.content
+        assert second.status_code == 201, second.content
+        assert first.json()["digital_record"]["storage_path"] == "expedientes/CONT-2026-081/"
+        assert second.json()["digital_record"]["storage_path"] == "expedientes/CONT-2026-082/"
+        assert DigitalRecord.objects.filter(contract__client=tenant).count() == 2
+
+    def test_retrieve_contract_exposes_existing_folder(self, api_client, contract):
+        response = api_client.get(f"{CONTRACTS}{contract.pk}/")
+
+        assert response.status_code == 200
+        assert response.json()["digital_record"]["storage_path"] == "expedientes/CONT-2026-042/"
+        assert response.json()["digital_record"]["documents_count"] == 0
+
     def test_list_and_search(self, api_client, contract):
         assert api_client.get(CONTRACTS).json()["count"] == 1
         assert api_client.get(CONTRACTS, {"search": "Logística"}).json()["count"] == 1
