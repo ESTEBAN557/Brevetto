@@ -1,9 +1,12 @@
 """Modelos mínimos de radicación para US-001."""
+import threading
+
 from django.conf import settings
-from django.db import models, transaction
+from django.db import connection, models, transaction
 
 
 class FilingSequence(models.Model):
+    _concurrency_lock = threading.RLock()
     """Consecutivo diario protegido contra duplicados concurrentes."""
 
     date = models.DateField(unique=True, db_index=True)
@@ -19,6 +22,14 @@ class FilingSequence(models.Model):
 
     @classmethod
     def get_next_number(cls, target_date) -> str:
+        if connection.vendor == "sqlite":
+            with cls._concurrency_lock:
+                with transaction.atomic():
+                    sequence, _created = cls.objects.get_or_create(date=target_date)
+                    sequence.last_number += 1
+                    sequence.save(update_fields=["last_number"])
+                    return cls.format_filing_number(target_date, sequence.last_number)
+
         with transaction.atomic():
             sequence, _created = cls.objects.select_for_update().get_or_create(
                 date=target_date

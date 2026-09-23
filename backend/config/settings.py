@@ -66,16 +66,26 @@ TEMPLATES = [{
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-DATABASES = {"default": {
-    "ENGINE": "django.db.backends.postgresql",
-    "NAME": env("POSTGRES_DB", default="brevetto"),
-    "USER": env("POSTGRES_USER", default="brevetto"),
-    "PASSWORD": env("POSTGRES_PASSWORD", default="brevetto"),
-    "HOST": env("POSTGRES_HOST", default="localhost"),
-    "PORT": env("POSTGRES_PORT"),
-    "CONN_MAX_AGE": 60,
-    "ATOMIC_REQUESTS": False,
-}}
+USE_SQLITE_FOR_TESTS = env("USE_SQLITE_FOR_TESTS", default=False)
+
+if USE_SQLITE_FOR_TESTS:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "test.sqlite3",
+        }
+    }
+else:
+    DATABASES = {"default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env("POSTGRES_DB", default="brevetto"),
+        "USER": env("POSTGRES_USER", default="brevetto"),
+        "PASSWORD": env("POSTGRES_PASSWORD", default="brevetto"),
+        "HOST": env("POSTGRES_HOST", default="localhost"),
+        "PORT": env("POSTGRES_PORT"),
+        "CONN_MAX_AGE": 60,
+        "ATOMIC_REQUESTS": False,
+    }}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_PASSWORD_VALIDATORS = [

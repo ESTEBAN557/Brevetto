@@ -10,9 +10,9 @@ Este documento contiene el desglose técnico y las tareas específicas para impl
 | :--- | :--- | :--- | :---: | :--- |
 | **US-001** | Generate Registration Number | Document Registration | 2 | Esteban Alvarez Garcia |
 | **US-002** | Upload Digital Document | Document Registration | 3 | Juan David Ortiz Moncada |
-| **US-004** | Create Document Record | Document Registration | 2 | Isabella Bejarano López |
+| **US-004** | Create Document Record | Document Registration | 2 | Santiago Sanchez Lara |
 | **US-005** | Capture Document Metadata | Document Registration | 2 | Esteban Alvarez Garcia |
-| **US-006** | Record Registration Information | Document Registration | 2 | Santiago Sanchez Lara |
+| **US-006** | Record Registration Information | Document Registration | 2 | Isabella Bejarano López |
 | **US-007** | Update Document Metadata | Document Registration | 2 | Felipe Giraldo Neira |
 | **US-008** | Create Contract Folder | Document Registration | 3 | Juan David Ortiz Moncada |
 | **US-009** | Process Document Content | Document Processing | 3 | Felipe Giraldo Neira |
