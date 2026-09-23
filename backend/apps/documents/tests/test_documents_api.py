@@ -168,6 +168,17 @@ class TestHumanValidation:
 
 @pytest.mark.django_db
 class TestMetadataUpdate:
+    def test_patch_updates_one_editable_field(self, api_client, document):
+        response = api_client.patch(
+            _detail(document, "metadata/"),
+            {"external_sender_name": "Nuevo remitente"},
+            format="json",
+        )
+
+        assert response.status_code == 200
+        document.refresh_from_db()
+        assert document.external_sender_name == "Nuevo remitente"
+
     def test_metadata_update_cannot_change_registration_information(self, api_client, document, user):
         original_registered_by = document.registered_by
         original_created_at = document.created_at
@@ -205,6 +216,53 @@ class TestMetadataUpdate:
         assert changes["document_type"] == {"before": None, "after": "FACTURA"}
         assert set(log.details["fields"]) == {"expiration_date", "document_type"}
 
+    def test_patch_returns_updated_metadata_as_confirmation(self, api_client, document):
+        response = api_client.patch(
+            _detail(document, "metadata/"),
+            {"document_date": "2026-09-20", "external_sender_name": "Carolina Restrepo"},
+            format="json",
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["document_date"] == "2026-09-20"
+        assert body["external_sender_name"] == "Carolina Restrepo"
+
+    def test_detail_displays_updated_metadata(self, api_client, document):
+        api_client.patch(
+            _detail(document, "metadata/"),
+            {"document_date": "2026-09-20", "external_sender_name": "Carolina Restrepo"},
+            format="json",
+        )
+
+        response = api_client.get(_detail(document))
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["document_date"] == "2026-09-20"
+        assert body["external_sender_name"] == "Carolina Restrepo"
+
+    def test_patch_preserves_existing_document_information(self, api_client, document):
+        original = {
+            "filing_number": document.filing_number,
+            "original_filename": document.original_filename,
+            "file_path": document.file_path,
+            "file_hash": document.file_hash,
+            "file_size_bytes": document.file_size_bytes,
+            "processing_status": document.processing_status,
+        }
+
+        response = api_client.patch(
+            _detail(document, "metadata/"),
+            {"external_sender_name": "Informacion actualizada"},
+            format="json",
+        )
+
+        assert response.status_code == 200
+        document.refresh_from_db()
+        for field, value in original.items():
+            assert getattr(document, field) == value
+
     def test_patch_can_clear_expiration(self, api_client, document):
         document.expiration_date = date(2027, 1, 1)
         document.save()
@@ -214,6 +272,21 @@ class TestMetadataUpdate:
         assert response.status_code == 200
         document.refresh_from_db()
         assert document.expiration_date is None
+
+    def test_patch_rejects_invalid_date_format_without_saving(self, api_client, document):
+        original_date = document.document_date
+
+        response = api_client.patch(
+            _detail(document, "metadata/"),
+            {"document_date": "20/09/2026"},
+            format="json",
+        )
+
+        assert response.status_code == 400
+        assert "document_date" in response.json()
+        document.refresh_from_db()
+        assert document.document_date == original_date
+        assert not document.audit_logs.filter(action=AuditLog.Action.METADATA_UPDATE).exists()
 
     def test_patch_without_fields_is_rejected(self, api_client, document):
         response = api_client.patch(_detail(document, "metadata/"), {}, format="json")
