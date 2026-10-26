@@ -18,6 +18,7 @@ Parámetros de consulta soportados por GET /api/v1/documents/:
   min_confidence / max_confidence
   registered_by              username
 """
+
 from __future__ import annotations
 
 import re
@@ -62,7 +63,9 @@ class DocumentFilter(filters.FilterSet):
     channel = CharInFilter(field_name="source_channel", lookup_expr="in")
 
     document_type = filters.UUIDFilter(field_name="document_type_id")
-    document_type_code = filters.CharFilter(field_name="document_type__code", lookup_expr="iexact")
+    document_type_code = filters.CharFilter(
+        field_name="document_type__code", lookup_expr="iexact"
+    )
     category = CharInFilter(field_name="document_type__category", lookup_expr="in")
 
     digital_record = filters.UUIDFilter(field_name="digital_record_id")
@@ -76,17 +79,27 @@ class DocumentFilter(filters.FilterSet):
 
     created_from = filters.DateFilter(field_name="created_at", lookup_expr="date__gte")
     created_to = filters.DateFilter(field_name="created_at", lookup_expr="date__lte")
-    document_date_from = filters.DateFilter(field_name="document_date", lookup_expr="gte")
+    document_date_from = filters.DateFilter(
+        field_name="document_date", lookup_expr="gte"
+    )
     document_date_to = filters.DateFilter(field_name="document_date", lookup_expr="lte")
-    expiration_from = filters.DateFilter(field_name="expiration_date", lookup_expr="gte")
+    expiration_from = filters.DateFilter(
+        field_name="expiration_date", lookup_expr="gte"
+    )
     expiration_to = filters.DateFilter(field_name="expiration_date", lookup_expr="lte")
     expiring_within_days = filters.NumberFilter(method="filter_expiring_within_days")
     include_expired = filters.BooleanFilter(method="noop")
     expired = filters.BooleanFilter(method="filter_expired")
 
-    min_confidence = filters.NumberFilter(field_name="ai_confidence_score", lookup_expr="gte")
-    max_confidence = filters.NumberFilter(field_name="ai_confidence_score", lookup_expr="lte")
-    registered_by = filters.CharFilter(field_name="registered_by__username", lookup_expr="iexact")
+    min_confidence = filters.NumberFilter(
+        field_name="ai_confidence_score", lookup_expr="gte"
+    )
+    max_confidence = filters.NumberFilter(
+        field_name="ai_confidence_score", lookup_expr="lte"
+    )
+    registered_by = filters.CharFilter(
+        field_name="registered_by__username", lookup_expr="iexact"
+    )
 
     class Meta:
         model = Document
@@ -109,9 +122,13 @@ class DocumentFilter(filters.FilterSet):
             | Q(digital_record__contract__client__email__icontains=term)
         )
         queryset = queryset.annotate(
-            client_fts=SearchVector("digital_record__contract__client__name", config=FTS_CONFIG)
+            client_fts=SearchVector(
+                "digital_record__contract__client__name", config=FTS_CONFIG
+            )
         )
-        condition |= Q(client_fts=SearchQuery(term, config=FTS_CONFIG, search_type="plain"))
+        condition |= Q(
+            client_fts=SearchQuery(term, config=FTS_CONFIG, search_type="plain")
+        )
 
         digits = normalize_digits(term)
         if len(digits) >= 4:
@@ -177,14 +194,19 @@ def _parse_boundary(value: str, *, end_of_day: bool):
 class AuditLogFilter(filters.FilterSet):
     """Filtros del módulo global de auditoría (US-023/024/025)."""
 
-    q = filters.CharFilter(method="filter_q", label="Texto en detalles, radicado, usuario o acción")
+    q = filters.CharFilter(
+        method="filter_q", label="Texto en detalles, radicado, usuario o acción"
+    )
     action = CharInFilter(field_name="action", lookup_expr="in")
     performed_by = filters.CharFilter(method="filter_performed_by")
     document = filters.UUIDFilter(field_name="document_id")
-    filing_number = filters.CharFilter(field_name="document__filing_number", lookup_expr="iexact")
+    filing_number = filters.CharFilter(
+        field_name="document__filing_number", lookup_expr="iexact"
+    )
     contract = filters.UUIDFilter(field_name="document__digital_record__contract_id")
     contract_number = filters.CharFilter(
-        field_name="document__digital_record__contract__contract_number", lookup_expr="iexact"
+        field_name="document__digital_record__contract__contract_number",
+        lookup_expr="iexact",
     )
     ip_address = filters.CharFilter(field_name="ip_address", lookup_expr="exact")
     timestamp_from = filters.CharFilter(method="filter_timestamp_from")
@@ -223,14 +245,22 @@ class AuditLogFilter(filters.FilterSet):
         from rest_framework.exceptions import ValidationError
 
         try:
-            return queryset.filter(timestamp__gte=_parse_boundary(value, end_of_day=False))
+            return queryset.filter(
+                timestamp__gte=_parse_boundary(value, end_of_day=False)
+            )
         except ValueError as exc:
-            raise ValidationError({"timestamp_from": "Use una fecha ISO (YYYY-MM-DD) o fecha-hora ISO."}) from exc
+            raise ValidationError(
+                {"timestamp_from": "Use una fecha ISO (YYYY-MM-DD) o fecha-hora ISO."}
+            ) from exc
 
     def filter_timestamp_to(self, queryset, name, value):
         from rest_framework.exceptions import ValidationError
 
         try:
-            return queryset.filter(timestamp__lte=_parse_boundary(value, end_of_day=True))
+            return queryset.filter(
+                timestamp__lte=_parse_boundary(value, end_of_day=True)
+            )
         except ValueError as exc:
-            raise ValidationError({"timestamp_to": "Use una fecha ISO (YYYY-MM-DD) o fecha-hora ISO."}) from exc
+            raise ValidationError(
+                {"timestamp_to": "Use una fecha ISO (YYYY-MM-DD) o fecha-hora ISO."}
+            ) from exc

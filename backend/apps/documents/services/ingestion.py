@@ -4,6 +4,7 @@ Servicio de ingesta y radicación de documentos (US-002, US-004, US-005, US-006)
 Flujo: validar archivo -> generar radicado atómico -> checksum SHA-256 -> subir a
 S3/MinIO -> crear Document (RECIBIDO) -> AuditLog CARGA -> encolar procesamiento IA.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -39,7 +40,9 @@ def get_extension(filename: str) -> str:
 
 def validate_upload(file) -> str:
     """Valida extensión, tamaño y MIME declarado. Devuelve el MIME canónico por extensión."""
-    allowed_extensions = tuple(ext.lower() for ext in settings.UPLOAD_ALLOWED_EXTENSIONS)
+    allowed_extensions = tuple(
+        ext.lower() for ext in settings.UPLOAD_ALLOWED_EXTENSIONS
+    )
     max_size = settings.UPLOAD_MAX_SIZE_BYTES
 
     extension = get_extension(getattr(file, "name", ""))
@@ -57,10 +60,15 @@ def validate_upload(file) -> str:
             f"El archivo pesa {size} bytes y supera el máximo de {max_size} bytes (25 MB)."
         )
 
-    declared_mime = (getattr(file, "content_type", "") or "").split(";")[0].strip().lower()
-    if declared_mime and declared_mime != "application/octet-stream":
-        if declared_mime not in settings.UPLOAD_ALLOWED_MIME_TYPES:
-            raise DocumentValidationError(f"Tipo MIME '{declared_mime}' no permitido.")
+    declared_mime = (
+        (getattr(file, "content_type", "") or "").split(";")[0].strip().lower()
+    )
+    if (
+        declared_mime
+        and declared_mime != "application/octet-stream"
+        and declared_mime not in settings.UPLOAD_ALLOWED_MIME_TYPES
+    ):
+        raise DocumentValidationError(f"Tipo MIME '{declared_mime}' no permitido.")
 
     return MIME_BY_EXTENSION[extension]
 
@@ -137,7 +145,9 @@ def register_document(
         )
         transaction.on_commit(lambda: enqueue_processing(document.pk))
 
-    logger.info("Documento radicado %s (%s bytes) -> %s", filing_number, file.size, stored_key)
+    logger.info(
+        "Documento radicado %s (%s bytes) -> %s", filing_number, file.size, stored_key
+    )
     return document
 
 

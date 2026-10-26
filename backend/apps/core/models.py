@@ -4,6 +4,7 @@ Modelos de dominio del núcleo de Brevetto (apps.core).
 Contiene las entidades maestras: Cliente, Contrato, Expediente Digital y el
 catálogo de Tipos Documentales. Ver docs/03_DATABASE_MODELS.md.
 """
+
 import uuid
 
 from django.db import models
@@ -34,7 +35,9 @@ class Client(TimeStampedModel):
 
     name = models.CharField(max_length=255, verbose_name="Nombre o Razón Social")
     document_type = models.CharField(
-        max_length=20, choices=IdentificationType.choices, default=IdentificationType.NIT
+        max_length=20,
+        choices=IdentificationType.choices,
+        default=IdentificationType.NIT,
     )
     identification_number = models.CharField(max_length=50, unique=True, db_index=True)
     email = models.EmailField(db_index=True)
@@ -60,7 +63,9 @@ class Contract(TimeStampedModel):
         IN_RENEWAL = "EN_RENOVACION", "En Renovación"
 
     contract_number = models.CharField(max_length=100, unique=True, db_index=True)
-    client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name="contracts")
+    client = models.ForeignKey(
+        Client, on_delete=models.PROTECT, related_name="contracts"
+    )
     property_address = models.CharField(
         max_length=255, verbose_name="Dirección de la Bodega / Inmueble"
     )
@@ -110,7 +115,9 @@ class DigitalRecord(TimeStampedModel):
     @classmethod
     def build_storage_path(cls, contract: "Contract") -> str:
         """Prefijo determinístico en el bucket: expedientes/<numero_contrato>/."""
-        safe_number = contract.contract_number.strip().replace("/", "-").replace(" ", "_")
+        safe_number = (
+            contract.contract_number.strip().replace("/", "-").replace(" ", "_")
+        )
         return f"{cls.STORAGE_PREFIX}/{safe_number}/"
 
 
@@ -124,7 +131,9 @@ class DocumentType(TimeStampedModel):
         COMMUNICATION = "COMUNICACION", "Comunicaciones y Solicitudes"
 
     name = models.CharField(max_length=100, unique=True)
-    code = models.CharField(max_length=50, unique=True)  # POLIZA_CUMPLIMIENTO, RUT, FACTURA
+    code = models.CharField(
+        max_length=50, unique=True
+    )  # POLIZA_CUMPLIMIENTO, RUT, FACTURA
     category = models.CharField(
         max_length=30, choices=Category.choices, default=Category.LEGAL
     )

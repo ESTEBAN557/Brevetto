@@ -1,4 +1,5 @@
 """Enrutamiento raíz de Brevetto. Todos los endpoints REST viven bajo /api/v1/."""
+
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
@@ -14,7 +15,9 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/health/", health_check, name="health-check"),
     path("api/v1/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/v1/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path(
+        "api/v1/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"
+    ),
     path("api/v1/", include("apps.documents.urls")),
     path("api/v1/", include("apps.core.urls")),
     path("api/v1/", include("apps.portal.urls")),

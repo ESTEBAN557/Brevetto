@@ -1,4 +1,5 @@
 """Punto de entrada ASGI para Brevetto."""
+
 import os
 
 from django.core.asgi import get_asgi_application

@@ -1,4 +1,5 @@
 """Servicio de auditoría: única vía para insertar registros en la bitácora inmutable."""
+
 from __future__ import annotations
 
 from typing import Any

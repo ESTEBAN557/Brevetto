@@ -1,4 +1,5 @@
 """Serializers del portal público (docs/04 §2)."""
+
 from __future__ import annotations
 
 from rest_framework import serializers
@@ -26,10 +27,14 @@ class PortalSubmitSerializer(serializers.Serializer):
         code = attrs["document_type_code"].strip().upper()
         document_type = DocumentType.objects.filter(code=code).first()
         if document_type is None:
-            raise serializers.ValidationError({"document_type_code": "Tipo documental no válido."})
+            raise serializers.ValidationError(
+                {"document_type_code": "Tipo documental no válido."}
+            )
         if document_type.requires_expiration and not attrs.get("expiration_date"):
             raise serializers.ValidationError(
-                {"expiration_date": f"El documento '{document_type.name}' requiere fecha de vencimiento."}
+                {
+                    "expiration_date": f"El documento '{document_type.name}' requiere fecha de vencimiento."
+                }
             )
         attrs["document_type"] = document_type
         return attrs

@@ -4,6 +4,7 @@ Servicio de generación de números de radicado (US-001).
 Encapsula la regla de negocio del formato `RAD-YYYYMMDD-XXXXXX` y delega la
 atomicidad al modelo `FilingSequence` (transacción + bloqueo de fila).
 """
+
 import re
 from datetime import date
 from zoneinfo import ZoneInfo

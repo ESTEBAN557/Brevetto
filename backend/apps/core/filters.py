@@ -13,6 +13,7 @@ GET /api/v1/contracts/ admite:
   expired                true => contratos con fecha de fin pasada
   has_documents          true/false
 """
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -58,11 +59,17 @@ class ContractFilter(filters.FilterSet):
             | Q(client__name__icontains=term)
             | Q(client__email__icontains=term)
         )
-        queryset = queryset.annotate(client_fts=SearchVector("client__name", config=FTS_CONFIG))
-        condition |= Q(client_fts=SearchQuery(term, config=FTS_CONFIG, search_type="plain"))
+        queryset = queryset.annotate(
+            client_fts=SearchVector("client__name", config=FTS_CONFIG)
+        )
+        condition |= Q(
+            client_fts=SearchQuery(term, config=FTS_CONFIG, search_type="plain")
+        )
         digits = normalize_digits(term)
         if len(digits) >= 4:
-            queryset = annotate_client_identification(queryset, "client__identification_number")
+            queryset = annotate_client_identification(
+                queryset, "client__identification_number"
+            )
             condition |= Q(client_id_normalized__icontains=digits)
         return queryset.filter(condition).distinct()
 
@@ -70,9 +77,9 @@ class ContractFilter(filters.FilterSet):
         digits = normalize_digits(value)
         if not digits:
             return queryset
-        return annotate_client_identification(queryset, "client__identification_number").filter(
-            client_id_normalized__startswith=digits
-        )
+        return annotate_client_identification(
+            queryset, "client__identification_number"
+        ).filter(client_id_normalized__startswith=digits)
 
     def filter_expiring_within_days(self, queryset, name, value):
         try:
@@ -80,18 +87,28 @@ class ContractFilter(filters.FilterSet):
         except (TypeError, ValueError):
             return queryset
         today = timezone.localdate()
-        return queryset.filter(end_date__gte=today, end_date__lte=today + timedelta(days=days))
+        return queryset.filter(
+            end_date__gte=today, end_date__lte=today + timedelta(days=days)
+        )
 
     def filter_expired(self, queryset, name, value):
         today = timezone.localdate()
-        return queryset.filter(end_date__lt=today) if value else queryset.filter(end_date__gte=today)
+        return (
+            queryset.filter(end_date__lt=today)
+            if value
+            else queryset.filter(end_date__gte=today)
+        )
 
     def filter_has_documents(self, queryset, name, value):
         # Meta.ordering no se aplica en consultas con GROUP BY: se fija el orden explícitamente.
-        queryset = queryset.annotate(documents_total=Count("digital_record__documents")).order_by(
-            *Contract._meta.ordering
+        queryset = queryset.annotate(
+            documents_total=Count("digital_record__documents")
+        ).order_by(*Contract._meta.ordering)
+        return (
+            queryset.filter(documents_total__gt=0)
+            if value
+            else queryset.filter(documents_total=0)
         )
-        return queryset.filter(documents_total__gt=0) if value else queryset.filter(documents_total=0)
 
 
 class ClientFilter(filters.FilterSet):
@@ -109,7 +126,9 @@ class ClientFilter(filters.FilterSet):
             return queryset
         condition = Q(name__icontains=term) | Q(email__icontains=term)
         queryset = queryset.annotate(name_fts=SearchVector("name", config=FTS_CONFIG))
-        condition |= Q(name_fts=SearchQuery(term, config=FTS_CONFIG, search_type="plain"))
+        condition |= Q(
+            name_fts=SearchQuery(term, config=FTS_CONFIG, search_type="plain")
+        )
         digits = normalize_digits(term)
         if len(digits) >= 4:
             queryset = annotate_client_identification(queryset, "identification_number")

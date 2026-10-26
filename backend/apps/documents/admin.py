@@ -27,8 +27,19 @@ class DocumentAdmin(admin.ModelAdmin):
         "created_at",
     )
     list_filter = ("processing_status", "source_channel", "document_type")
-    search_fields = ("filing_number", "original_filename", "file_hash", "external_sender_name")
-    readonly_fields = ("filing_number", "file_hash", "file_size_bytes", "created_at", "updated_at")
+    search_fields = (
+        "filing_number",
+        "original_filename",
+        "file_hash",
+        "external_sender_name",
+    )
+    readonly_fields = (
+        "filing_number",
+        "file_hash",
+        "file_size_bytes",
+        "created_at",
+        "updated_at",
+    )
     date_hierarchy = "created_at"
 
 

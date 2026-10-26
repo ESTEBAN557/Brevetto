@@ -1,5 +1,6 @@
 """Pruebas de consulta, bandeja HITL, validación humana, metadatos (US-007) y URLs prefirmadas."""
-from datetime import date
+
+from datetime import UTC, date
 
 import pytest
 
@@ -40,7 +41,9 @@ class TestDocumentQueries:
         assert body["results"][0]["contract_number"] is None
         assert body["results"][0]["registered_by"] == "analista"
 
-    def test_retrieve_exposes_full_metadata(self, api_client, document, contract, document_type):
+    def test_retrieve_exposes_full_metadata(
+        self, api_client, document, contract, document_type
+    ):
         document.document_date = date(2026, 9, 20)
         document.external_sender_name = "Carolina Restrepo"
         document.digital_record = contract.digital_record
@@ -57,7 +60,9 @@ class TestDocumentQueries:
         assert body["document_date"] == "2026-09-20"
         assert body["external_sender_name"] == "Carolina Restrepo"
 
-    def test_retrieve_exposes_processing_status_and_extracted_information(self, api_client, document):
+    def test_retrieve_exposes_processing_status_and_extracted_information(
+        self, api_client, document
+    ):
         document.processing_status = Document.ProcessingStatus.PROCESSED
         document.ai_extracted_data = {
             "extracted_text_summary": "Contenido procesado",
@@ -71,10 +76,14 @@ class TestDocumentQueries:
         assert response.status_code == 200
         body = response.json()
         assert body["processing_status"] == "PROCESADO"
-        assert body["ai_extracted_data"]["extracted_text_summary"] == "Contenido procesado"
+        assert (
+            body["ai_extracted_data"]["extracted_text_summary"] == "Contenido procesado"
+        )
         assert body["ai_confidence_score"] == 0.93
 
-    def test_filter_by_status_and_search_by_filing_number(self, api_client, document, review_document):
+    def test_filter_by_status_and_search_by_filing_number(
+        self, api_client, document, review_document
+    ):
         assert document.pk == review_document.pk  # misma fila, ya en REQUIERE_REVISION
         other = Document.objects.create(
             filing_number="RAD-20260920-000099",
@@ -84,7 +93,9 @@ class TestDocumentQueries:
             file_size_bytes=10,
         )
 
-        by_status = api_client.get(BASE, {"processing_status": "REQUIERE_REVISION"}).json()
+        by_status = api_client.get(
+            BASE, {"processing_status": "REQUIERE_REVISION"}
+        ).json()
         assert [d["id"] for d in by_status["results"]] == [str(review_document.pk)]
 
         by_search = api_client.get(BASE, {"search": "000099"}).json()
@@ -154,13 +165,18 @@ class TestHumanValidation:
     ):
         response = api_client.post(
             _detail(review_document, "validate/"),
-            {"contract_id": str(contract.pk), "document_type_id": str(document_type.pk)},
+            {
+                "contract_id": str(contract.pk),
+                "document_type_id": str(document_type.pk),
+            },
             format="json",
         )
         assert response.status_code == 400
         assert "expiration_date" in response.json()
         review_document.refresh_from_db()
-        assert review_document.processing_status == Document.ProcessingStatus.NEEDS_REVIEW
+        assert (
+            review_document.processing_status == Document.ProcessingStatus.NEEDS_REVIEW
+        )
 
     def test_validate_without_expiration_is_fine_for_invoices(
         self, api_client, review_document, contract, invoice_type
@@ -173,10 +189,15 @@ class TestHumanValidation:
         assert response.status_code == 200
         assert response.json()["document_type"]["code"] == "FACTURA"
 
-    def test_validate_rejects_unknown_contract_or_type(self, api_client, review_document, document_type):
+    def test_validate_rejects_unknown_contract_or_type(
+        self, api_client, review_document, document_type
+    ):
         response = api_client.post(
             _detail(review_document, "validate/"),
-            {"contract_id": "9a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d", "document_type_id": str(document_type.pk)},
+            {
+                "contract_id": "9a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
+                "document_type_id": str(document_type.pk),
+            },
             format="json",
         )
         assert response.status_code == 400
@@ -196,7 +217,9 @@ class TestMetadataUpdate:
         document.refresh_from_db()
         assert document.external_sender_name == "Nuevo remitente"
 
-    def test_metadata_update_cannot_change_registration_information(self, api_client, document, user):
+    def test_metadata_update_cannot_change_registration_information(
+        self, api_client, document, user
+    ):
         original_registered_by = document.registered_by
         original_created_at = document.created_at
 
@@ -216,7 +239,9 @@ class TestMetadataUpdate:
         assert document.created_at == original_created_at
         assert document.external_sender_name == "Actualizado"
 
-    def test_patch_logs_previous_and_new_values(self, api_client, document, invoice_type):
+    def test_patch_logs_previous_and_new_values(
+        self, api_client, document, invoice_type
+    ):
         response = api_client.patch(
             _detail(document, "metadata/"),
             {"document_type": str(invoice_type.pk), "expiration_date": "2027-09-20"},
@@ -236,7 +261,10 @@ class TestMetadataUpdate:
     def test_patch_returns_updated_metadata_as_confirmation(self, api_client, document):
         response = api_client.patch(
             _detail(document, "metadata/"),
-            {"document_date": "2026-09-20", "external_sender_name": "Carolina Restrepo"},
+            {
+                "document_date": "2026-09-20",
+                "external_sender_name": "Carolina Restrepo",
+            },
             format="json",
         )
 
@@ -248,7 +276,10 @@ class TestMetadataUpdate:
     def test_detail_displays_updated_metadata(self, api_client, document):
         api_client.patch(
             _detail(document, "metadata/"),
-            {"document_date": "2026-09-20", "external_sender_name": "Carolina Restrepo"},
+            {
+                "document_date": "2026-09-20",
+                "external_sender_name": "Carolina Restrepo",
+            },
             format="json",
         )
 
@@ -284,13 +315,17 @@ class TestMetadataUpdate:
         document.expiration_date = date(2027, 1, 1)
         document.save()
 
-        response = api_client.patch(_detail(document, "metadata/"), {"expiration_date": None}, format="json")
+        response = api_client.patch(
+            _detail(document, "metadata/"), {"expiration_date": None}, format="json"
+        )
 
         assert response.status_code == 200
         document.refresh_from_db()
         assert document.expiration_date is None
 
-    def test_patch_rejects_invalid_date_format_without_saving(self, api_client, document):
+    def test_patch_rejects_invalid_date_format_without_saving(
+        self, api_client, document
+    ):
         original_date = document.document_date
 
         response = api_client.patch(
@@ -303,7 +338,9 @@ class TestMetadataUpdate:
         assert "document_date" in response.json()
         document.refresh_from_db()
         assert document.document_date == original_date
-        assert not document.audit_logs.filter(action=AuditLog.Action.METADATA_UPDATE).exists()
+        assert not document.audit_logs.filter(
+            action=AuditLog.Action.METADATA_UPDATE
+        ).exists()
 
     def test_patch_without_fields_is_rejected(self, api_client, document):
         response = api_client.patch(_detail(document, "metadata/"), {}, format="json")
@@ -314,7 +351,9 @@ class TestMetadataUpdate:
 @pytest.mark.django_db
 class TestPresignedUrls:
     def test_view_url_returns_temporary_link_and_logs_view(self, api_client, document):
-        response = api_client.get(_detail(document, "view-url/"), REMOTE_ADDR="10.9.9.9")
+        response = api_client.get(
+            _detail(document, "view-url/"), REMOTE_ADDR="10.9.9.9"
+        )
 
         assert response.status_code == 200
         body = response.json()
@@ -337,14 +376,19 @@ class TestPresignedUrls:
 @pytest.mark.django_db
 class TestAuditTrail:
     def test_audit_trail_lists_actions_newest_first(self, api_client, document, user):
-        from datetime import datetime, timedelta, timezone as dt_timezone
+        from datetime import datetime, timedelta
         from unittest.mock import patch
 
-        base = datetime(2026, 9, 20, 15, 0, 0, tzinfo=dt_timezone.utc)
+        base = datetime(2026, 9, 20, 15, 0, 0, tzinfo=UTC)
         # Timestamps explícitos: el reloj de Windows puede repetir el mismo microsegundo.
-        with patch("django.utils.timezone.now", side_effect=[base + timedelta(seconds=i) for i in range(3)]):
+        with patch(
+            "django.utils.timezone.now",
+            side_effect=[base + timedelta(seconds=i) for i in range(3)],
+        ):
             log_action(document, AuditLog.Action.UPLOAD, user=user, details={"step": 1})
-            log_action(document, AuditLog.Action.AI_CLASSIFY, details={"confidence": 0.5})
+            log_action(
+                document, AuditLog.Action.AI_CLASSIFY, details={"confidence": 0.5}
+            )
             log_action(document, AuditLog.Action.VIEW, user=user)
 
         body = api_client.get(_detail(document, "audit-trail/")).json()

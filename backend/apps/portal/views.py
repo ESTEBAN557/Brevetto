@@ -4,6 +4,7 @@ Endpoints del portal externo de inquilinos: /api/v1/portal/ (sin autenticación 
 - verify-contract: valida NIT/Cédula + número de contrato y emite un token temporal.
 - submit-document: radica un documento asociado al contrato del token y devuelve el comprobante.
 """
+
 from __future__ import annotations
 
 from django.db import transaction
@@ -64,7 +65,9 @@ class VerifyContractView(APIView):
         try:
             contract = verify_contract(**serializer.validated_data)
         except PortalVerificationError:
-            return Response({"detail": GENERIC_VERIFY_ERROR}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": GENERIC_VERIFY_ERROR}, status=status.HTTP_404_NOT_FOUND
+            )
 
         expiring = [
             {
@@ -88,9 +91,13 @@ class VerifyContractView(APIView):
                 },
                 "client": {
                     "name": contract.client.name,
-                    "identification_number": mask_identification(contract.client.identification_number),
+                    "identification_number": mask_identification(
+                        contract.client.identification_number
+                    ),
                 },
-                "document_types": DocumentTypeSerializer(portal_document_types(), many=True).data,
+                "document_types": DocumentTypeSerializer(
+                    portal_document_types(), many=True
+                ).data,
                 "expiring_documents": expiring,
             }
         )
@@ -126,7 +133,9 @@ class SubmitDocumentView(APIView):
             document.document_type = data["document_type"]
             if data.get("expiration_date"):
                 document.expiration_date = data["expiration_date"]
-            document.save(update_fields=["document_type", "expiration_date", "updated_at"])
+            document.save(
+                update_fields=["document_type", "expiration_date", "updated_at"]
+            )
             log_action(
                 document,
                 AuditLog.Action.METADATA_UPDATE,
@@ -135,7 +144,9 @@ class SubmitDocumentView(APIView):
                     "source": "portal_web",
                     "declared_document_type": data["document_type"].code,
                     "declared_expiration_date": (
-                        data["expiration_date"].isoformat() if data.get("expiration_date") else None
+                        data["expiration_date"].isoformat()
+                        if data.get("expiration_date")
+                        else None
                     ),
                     "sender_name": data["sender_name"],
                 },
@@ -155,7 +166,9 @@ class SubmitDocumentView(APIView):
                 "file_hash": document.file_hash,
                 "sender_name": data["sender_name"],
                 "processing_status": document.processing_status,
-                "receipt_signature": receipt_signature(document.filing_number, document.file_hash),
+                "receipt_signature": receipt_signature(
+                    document.filing_number, document.file_hash
+                ),
             },
             status=status.HTTP_201_CREATED,
         )

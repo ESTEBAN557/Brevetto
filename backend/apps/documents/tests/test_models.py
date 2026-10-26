@@ -1,4 +1,5 @@
 """Pruebas de los modelos Document y AuditLog (inmutabilidad append-only)."""
+
 import pytest
 from django.db import DatabaseError, connection, transaction
 
@@ -29,7 +30,9 @@ class TestDocument:
                 registered_by=user,
             )
 
-    def test_document_can_be_linked_to_contract_digital_record(self, document, contract, document_type):
+    def test_document_can_be_linked_to_contract_digital_record(
+        self, document, contract, document_type
+    ):
         document.digital_record = contract.digital_record
         document.document_type = document_type
         document.processing_status = Document.ProcessingStatus.PROCESSED
@@ -82,7 +85,9 @@ class TestAuditLogImmutability:
         self._create_log(document, user)
 
         with pytest.raises(AuditLogImmutableError):
-            AuditLog.objects.filter(document=document).update(action=AuditLog.Action.VIEW)
+            AuditLog.objects.filter(document=document).update(
+                action=AuditLog.Action.VIEW
+            )
 
     def test_queryset_delete_is_rejected(self, document, user):
         self._create_log(document, user)
@@ -94,12 +99,15 @@ class TestAuditLogImmutability:
         """Incluso saltándose el ORM, PostgreSQL rechaza el UPDATE."""
         log = self._create_log(document, user)
 
-        with pytest.raises(DatabaseError), transaction.atomic():
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    "UPDATE documents_auditlog SET action = %s WHERE id = %s",
-                    [AuditLog.Action.DOWNLOAD, str(log.pk)],
-                )
+        with (
+            pytest.raises(DatabaseError),
+            transaction.atomic(),
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                "UPDATE documents_auditlog SET action = %s WHERE id = %s",
+                [AuditLog.Action.DOWNLOAD, str(log.pk)],
+            )
 
         log.refresh_from_db()
         assert log.action == AuditLog.Action.UPLOAD
@@ -107,9 +115,14 @@ class TestAuditLogImmutability:
     def test_database_trigger_blocks_raw_delete(self, document, user):
         log = self._create_log(document, user)
 
-        with pytest.raises(DatabaseError), transaction.atomic():
-            with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM documents_auditlog WHERE id = %s", [str(log.pk)])
+        with (
+            pytest.raises(DatabaseError),
+            transaction.atomic(),
+            connection.cursor() as cursor,
+        ):
+            cursor.execute(
+                "DELETE FROM documents_auditlog WHERE id = %s", [str(log.pk)]
+            )
 
         assert AuditLog.objects.filter(pk=log.pk).exists()
 

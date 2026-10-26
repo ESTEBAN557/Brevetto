@@ -1,4 +1,5 @@
 """Crea el bucket S3/MinIO configurado si aún no existe (idempotente)."""
+
 import boto3
 from botocore.exceptions import ClientError, EndpointConnectionError
 from django.conf import settings
@@ -26,7 +27,11 @@ class Command(BaseCommand):
         except ClientError as exc:
             code = exc.response.get("Error", {}).get("Code", "")
             if code not in ("404", "NoSuchBucket", "NotFound"):
-                raise CommandError(f"Error consultando el bucket '{bucket}': {exc}") from exc
+                raise CommandError(
+                    f"Error consultando el bucket '{bucket}': {exc}"
+                ) from exc
 
         client.create_bucket(Bucket=bucket)
-        self.stdout.write(self.style.SUCCESS(f"Bucket '{bucket}' creado correctamente."))
+        self.stdout.write(
+            self.style.SUCCESS(f"Bucket '{bucket}' creado correctamente.")
+        )

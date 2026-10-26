@@ -1,4 +1,7 @@
 """Pruebas de /api/v1/clients/, /api/v1/contracts/ y /api/v1/document-types/ (US-008)."""
+
+from datetime import UTC
+
 import pytest
 from django.core.files.storage import default_storage
 
@@ -13,7 +16,9 @@ TYPES = "/api/v1/document-types/"
 
 @pytest.mark.django_db
 class TestContractsApi:
-    def test_create_contract_generates_record_and_storage_folder(self, api_client, tenant):
+    def test_create_contract_generates_record_and_storage_folder(
+        self, api_client, tenant
+    ):
         payload = {
             "contract_number": "CONT-2026-077",
             "client": str(tenant.pk),
@@ -67,7 +72,9 @@ class TestContractsApi:
         assert response.status_code == 400
         assert "contract_number" in response.json()
 
-    def test_create_multiple_contracts_provisions_independent_folders(self, api_client, tenant):
+    def test_create_multiple_contracts_provisions_independent_folders(
+        self, api_client, tenant
+    ):
         first = api_client.post(
             CONTRACTS,
             {
@@ -93,15 +100,24 @@ class TestContractsApi:
 
         assert first.status_code == 201, first.content
         assert second.status_code == 201, second.content
-        assert first.json()["digital_record"]["storage_path"] == "expedientes/CONT-2026-081/"
-        assert second.json()["digital_record"]["storage_path"] == "expedientes/CONT-2026-082/"
+        assert (
+            first.json()["digital_record"]["storage_path"]
+            == "expedientes/CONT-2026-081/"
+        )
+        assert (
+            second.json()["digital_record"]["storage_path"]
+            == "expedientes/CONT-2026-082/"
+        )
         assert DigitalRecord.objects.filter(contract__client=tenant).count() == 2
 
     def test_retrieve_contract_exposes_existing_folder(self, api_client, contract):
         response = api_client.get(f"{CONTRACTS}{contract.pk}/")
 
         assert response.status_code == 200
-        assert response.json()["digital_record"]["storage_path"] == "expedientes/CONT-2026-042/"
+        assert (
+            response.json()["digital_record"]["storage_path"]
+            == "expedientes/CONT-2026-042/"
+        )
         assert response.json()["digital_record"]["documents_count"] == 0
 
     def test_list_and_search(self, api_client, contract):
@@ -111,7 +127,9 @@ class TestContractsApi:
         assert api_client.get(CONTRACTS, {"status": "TERMINADO"}).json()["count"] == 0
 
     def test_patch_status(self, api_client, contract):
-        response = api_client.patch(f"{CONTRACTS}{contract.pk}/", {"status": "EN_RENOVACION"}, format="json")
+        response = api_client.patch(
+            f"{CONTRACTS}{contract.pk}/", {"status": "EN_RENOVACION"}, format="json"
+        )
         assert response.status_code == 200
         assert response.json()["status_label"] == "En Renovación"
 
@@ -129,17 +147,31 @@ class TestContractsApi:
         assert body["count"] == 1
         assert body["results"][0]["filing_number"] == document.filing_number
 
-        assert api_client.get(f"{CONTRACTS}{contract.pk}/documents/", {"document_type": "FACTURA"}).json()["count"] == 0
-        assert api_client.get(f"{CONTRACTS}{contract.pk}/documents/", {"category": "POLIZA"}).json()["count"] == 1
+        assert (
+            api_client.get(
+                f"{CONTRACTS}{contract.pk}/documents/", {"document_type": "FACTURA"}
+            ).json()["count"]
+            == 0
+        )
+        assert (
+            api_client.get(
+                f"{CONTRACTS}{contract.pk}/documents/", {"category": "POLIZA"}
+            ).json()["count"]
+            == 1
+        )
 
-    def test_contract_audit_trail_aggregates_document_logs(self, api_client, contract, document, user):
-        from datetime import datetime, timedelta, timezone as dt_timezone
+    def test_contract_audit_trail_aggregates_document_logs(
+        self, api_client, contract, document, user
+    ):
+        from datetime import datetime, timedelta
         from unittest.mock import patch
 
         document.digital_record = contract.digital_record
         document.save()
-        base = datetime(2026, 9, 20, 15, 0, 0, tzinfo=dt_timezone.utc)
-        with patch("django.utils.timezone.now", side_effect=[base, base + timedelta(seconds=1)]):
+        base = datetime(2026, 9, 20, 15, 0, 0, tzinfo=UTC)
+        with patch(
+            "django.utils.timezone.now", side_effect=[base, base + timedelta(seconds=1)]
+        ):
             log_action(document, AuditLog.Action.UPLOAD, user=user)
             log_action(document, AuditLog.Action.VIEW, user=user)
 
@@ -173,14 +205,20 @@ class TestClientsApi:
 
         assert api_client.get(CLIENTS, {"search": "1020304050"}).json()["count"] == 1
 
-        patched = api_client.patch(f"{CLIENTS}{client_id}/", {"phone": "3001234567"}, format="json")
+        patched = api_client.patch(
+            f"{CLIENTS}{client_id}/", {"phone": "3001234567"}, format="json"
+        )
         assert patched.status_code == 200
         assert Client.objects.get(pk=client_id).phone == "3001234567"
 
     def test_duplicate_identification_is_rejected(self, api_client, tenant):
         response = api_client.post(
             CLIENTS,
-            {"name": "Duplicado", "identification_number": tenant.identification_number, "email": "d@x.co"},
+            {
+                "name": "Duplicado",
+                "identification_number": tenant.identification_number,
+                "email": "d@x.co",
+            },
             format="json",
         )
         assert response.status_code == 400

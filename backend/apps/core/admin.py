@@ -5,7 +5,13 @@ from .models import Client, Contract, DigitalRecord, DocumentType
 
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ("identification_number", "name", "document_type", "client_type", "email")
+    list_display = (
+        "identification_number",
+        "name",
+        "document_type",
+        "client_type",
+        "email",
+    )
     search_fields = ("identification_number", "name", "email")
     list_filter = ("client_type", "document_type")
 

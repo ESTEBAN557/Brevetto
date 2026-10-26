@@ -4,6 +4,7 @@ Configuración de Django para Brevetto (Coltebienes S.A.).
 Todas las variables sensibles se leen del entorno (.env) mediante django-environ.
 Stack obligatorio: Django 5 + DRF + Celery + PostgreSQL 16 + Redis 7 + S3/MinIO.
 """
+
 from datetime import timedelta
 from pathlib import Path
 
@@ -97,7 +98,9 @@ DATABASES = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -123,7 +126,9 @@ AWS_S3_PUBLIC_ENDPOINT_URL = env("AWS_S3_PUBLIC_ENDPOINT_URL", default="")
 AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = None
 AWS_QUERYSTRING_AUTH = True
-AWS_QUERYSTRING_EXPIRE = env("PRESIGNED_URL_EXPIRATION_SECONDS")  # 15 min (NFR seguridad)
+AWS_QUERYSTRING_EXPIRE = env(
+    "PRESIGNED_URL_EXPIRATION_SECONDS"
+)  # 15 min (NFR seguridad)
 AWS_S3_ADDRESSING_STYLE = "path"  # requerido por MinIO
 AWS_S3_SIGNATURE_VERSION = "s3v4"
 
@@ -150,7 +155,9 @@ REST_FRAMEWORK = {
 }
 
 # --- Portal público de inquilinos -------------------------------------------
-PORTAL_SESSION_TTL_SECONDS = env.int("PORTAL_SESSION_TTL_SECONDS", default=1800)  # 30 minutos
+PORTAL_SESSION_TTL_SECONDS = env.int(
+    "PORTAL_SESSION_TTL_SECONDS", default=1800
+)  # 30 minutos
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
@@ -191,9 +198,13 @@ CELERY_BEAT_SCHEDULE = {
 # --- Reglas de negocio Brevetto ---------------------------------------------
 FILING_NUMBER_PREFIX = "RAD"  # RAD-YYYYMMDD-XXXXXX
 FILING_NUMBER_SEQUENCE_DIGITS = 6
-AI_CONFIDENCE_THRESHOLD = env("AI_CONFIDENCE_THRESHOLD")  # HITL: < 0.85 => revisión manual
+AI_CONFIDENCE_THRESHOLD = env(
+    "AI_CONFIDENCE_THRESHOLD"
+)  # HITL: < 0.85 => revisión manual
 UPLOAD_MAX_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB
-MANUAL_MINUTES_PER_DOCUMENT = env.int("MANUAL_MINUTES_PER_DOCUMENT", default=8)  # supuesto KPI de ahorro
+MANUAL_MINUTES_PER_DOCUMENT = env.int(
+    "MANUAL_MINUTES_PER_DOCUMENT", default=8
+)  # supuesto KPI de ahorro
 UPLOAD_ALLOWED_EXTENSIONS = (".pdf", ".png", ".jpg", ".jpeg")
 UPLOAD_ALLOWED_MIME_TYPES = ("application/pdf", "image/png", "image/jpeg")
 

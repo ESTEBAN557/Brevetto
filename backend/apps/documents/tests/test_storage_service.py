@@ -1,4 +1,5 @@
 """Pruebas del servicio de almacenamiento: claves de objeto y URLs prefirmadas."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,18 +18,31 @@ from apps.documents.services.storage import (
 class TestObjectKeys:
     def test_unclassified_documents_go_to_year_month_prefix(self):
         key = build_object_key("RAD-20260920-000007", "Cuenta de cobro (sep).pdf")
-        assert key == "radicados/sin_clasificar/2026/09/RAD-20260920-000007_Cuenta_de_cobro_sep.pdf"
+        assert (
+            key
+            == "radicados/sin_clasificar/2026/09/RAD-20260920-000007_Cuenta_de_cobro_sep.pdf"
+        )
 
     @pytest.mark.django_db
     def test_documents_with_contract_go_to_record_prefix(self, contract):
-        key = build_object_key("RAD-20260920-000007", "poliza.pdf", contract.digital_record)
+        key = build_object_key(
+            "RAD-20260920-000007", "poliza.pdf", contract.digital_record
+        )
         assert key == "expedientes/CONT-2026-042/RAD-20260920-000007_poliza.pdf"
 
     def test_filename_without_valid_chars_gets_fallback(self):
-        assert build_object_key("RAD-20260920-000001", "¿¿??").endswith("RAD-20260920-000001_documento")
-        assert build_object_key("RAD-20260920-000001", "¿¿??.pdf").endswith("RAD-20260920-000001_documento.pdf")
-        assert build_object_key("RAD-20260920-000001", "").endswith("RAD-20260920-000001_documento")
-        assert build_object_key("RAD-20260920-000001", "..").endswith("RAD-20260920-000001_documento")
+        assert build_object_key("RAD-20260920-000001", "¿¿??").endswith(
+            "RAD-20260920-000001_documento"
+        )
+        assert build_object_key("RAD-20260920-000001", "¿¿??.pdf").endswith(
+            "RAD-20260920-000001_documento.pdf"
+        )
+        assert build_object_key("RAD-20260920-000001", "").endswith(
+            "RAD-20260920-000001_documento"
+        )
+        assert build_object_key("RAD-20260920-000001", "..").endswith(
+            "RAD-20260920-000001_documento"
+        )
 
 
 @pytest.mark.django_db
@@ -54,7 +68,9 @@ class TestPresignedUrls:
     def test_signs_against_public_endpoint_when_configured(self, settings):
         settings.STORAGES = {
             "default": {"BACKEND": "storages.backends.s3.S3Storage"},
-            "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+            "staticfiles": {
+                "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+            },
         }
         settings.AWS_S3_PUBLIC_ENDPOINT_URL = "http://localhost:9000"
         settings.AWS_STORAGE_BUCKET_NAME = "brevetto-docs"
@@ -68,7 +84,9 @@ class TestPresignedUrls:
             url = get_presigned_url("radicados/x.pdf")
 
         assert url.startswith("http://localhost:9000/brevetto-docs/")
-        assert client_factory.call_args.kwargs["endpoint_url"] == "http://localhost:9000"
+        assert (
+            client_factory.call_args.kwargs["endpoint_url"] == "http://localhost:9000"
+        )
         fake_client.generate_presigned_url.assert_called_once_with(
             "get_object",
             Params={"Bucket": "brevetto-docs", "Key": "radicados/x.pdf"},

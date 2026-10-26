@@ -1,4 +1,5 @@
 """Pruebas de los modelos maestros: Client, Contract, DigitalRecord y DocumentType."""
+
 from datetime import date
 
 import pytest
@@ -101,4 +102,11 @@ class TestDocumentType:
 
     def test_catalog_is_seeded_by_migration(self, db):
         codes = set(DocumentType.objects.values_list("code", flat=True))
-        assert {"POLIZA_CUMPLIMIENTO", "FACTURA", "SERVICIO_PUBLICO", "CARTA_SOLICITUD", "ACTA_ENTREGA", "OTRO"} <= codes
+        assert {
+            "POLIZA_CUMPLIMIENTO",
+            "FACTURA",
+            "SERVICIO_PUBLICO",
+            "CARTA_SOLICITUD",
+            "ACTA_ENTREGA",
+            "OTRO",
+        } <= codes

@@ -4,6 +4,7 @@ Servicio de almacenamiento de objetos (S3 / MinIO) vía django-storages.
 Toda interacción con el bucket pasa por `default_storage`, configurado en
 settings.STORAGES. En pruebas se sustituye por InMemoryStorage.
 """
+
 from __future__ import annotations
 
 import json
@@ -135,7 +136,9 @@ def ensure_record_prefix(record: DigitalRecord) -> str:
         "client_identification": record.contract.client.identification_number,
         "created_at": timezone.now().isoformat(),
     }
-    content = ContentFile(json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8"))
+    content = ContentFile(
+        json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
+    )
     saved = default_storage.save(marker_key, content)
     logger.info("Expediente provisionado en storage: %s", saved)
     return saved

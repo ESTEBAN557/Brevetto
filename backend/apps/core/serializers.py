@@ -1,4 +1,5 @@
 """Serializers DRF del núcleo: clientes, contratos, expedientes y tipos documentales."""
+
 from __future__ import annotations
 
 from rest_framework import serializers
@@ -27,7 +28,9 @@ class ClientSerializer(serializers.ModelSerializer):
 
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
-    category_label = serializers.CharField(source="get_category_display", read_only=True)
+    category_label = serializers.CharField(
+        source="get_category_display", read_only=True
+    )
 
     class Meta:
         model = DocumentType
@@ -76,13 +79,22 @@ class ContractSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "client_detail", "digital_record", "status_label", "created_at", "updated_at")
+        read_only_fields = (
+            "id",
+            "client_detail",
+            "digital_record",
+            "status_label",
+            "created_at",
+            "updated_at",
+        )
 
     def validate(self, attrs):
         start = attrs.get("start_date", getattr(self.instance, "start_date", None))
         end = attrs.get("end_date", getattr(self.instance, "end_date", None))
         if start and end and end < start:
             raise serializers.ValidationError(
-                {"end_date": "La fecha de fin no puede ser anterior a la fecha de inicio."}
+                {
+                    "end_date": "La fecha de fin no puede ser anterior a la fecha de inicio."
+                }
             )
         return attrs

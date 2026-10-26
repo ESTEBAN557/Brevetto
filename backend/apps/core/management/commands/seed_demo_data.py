@@ -15,6 +15,7 @@ Crea (o reutiliza si ya existen):
 Los documentos se identifican por `ai_extracted_data.demo_seed_key`, por lo que
 volver a ejecutar el comando no duplica registros ni consume nuevos radicados.
 """
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -23,6 +24,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
+from scripts.make_sample_pdf import sample_pdf
 
 from apps.core.models import Client, Contract, DocumentType
 from apps.core.services import create_contract
@@ -32,7 +34,6 @@ from apps.documents.services.expirations import check_expiring_documents
 from apps.documents.services.filing import generate_filing_number
 from apps.documents.services.ingestion import compute_sha256
 from apps.documents.services.storage import build_object_key, store_document_file
-from scripts.make_sample_pdf import sample_pdf
 
 DEMO_USERNAME = "demo"
 DEMO_SEED_KEY = "demo_seed_key"
@@ -171,8 +172,14 @@ class Command(BaseCommand):
     help = "Crea datos de demostración idempotentes (usuario demo, clientes, contratos y documentos)."
 
     def add_arguments(self, parser):
-        parser.add_argument("--password", default="Brevetto2026!", help="Contraseña del usuario demo.")
-        parser.add_argument("--skip-alerts", action="store_true", help="No calcular alertas de vencimiento.")
+        parser.add_argument(
+            "--password", default="Brevetto2026!", help="Contraseña del usuario demo."
+        )
+        parser.add_argument(
+            "--skip-alerts",
+            action="store_true",
+            help="No calcular alertas de vencimiento.",
+        )
 
     def handle(self, *args, **options):
         today = timezone.localdate()
@@ -180,8 +187,13 @@ class Command(BaseCommand):
 
         user = self._ensure_user(options["password"], summary)
         clients = [self._ensure_client(spec, summary) for spec in CLIENTS]
-        contracts = [self._ensure_contract(spec, clients, summary) for spec in CONTRACTS]
-        documents = [self._ensure_document(spec, contracts, user, today, summary) for spec in document_specs(today)]
+        contracts = [
+            self._ensure_contract(spec, clients, summary) for spec in CONTRACTS
+        ]
+        documents = [
+            self._ensure_document(spec, contracts, user, today, summary)
+            for spec in document_specs(today)
+        ]
 
         alerts = None
         if not options["skip_alerts"]:
@@ -194,7 +206,12 @@ class Command(BaseCommand):
         User = get_user_model()
         user, created = User.objects.get_or_create(
             username=DEMO_USERNAME,
-            defaults={"first_name": "Usuario", "last_name": "Demo", "email": "demo@coltebienes.co", "is_staff": True},
+            defaults={
+                "first_name": "Usuario",
+                "last_name": "Demo",
+                "email": "demo@coltebienes.co",
+                "is_staff": True,
+            },
         )
         if created:
             summary["created"].append(f"usuario {DEMO_USERNAME}")
@@ -214,7 +231,9 @@ class Command(BaseCommand):
         return client
 
     def _ensure_contract(self, spec, clients, summary):
-        existing = Contract.objects.filter(contract_number=spec["contract_number"]).first()
+        existing = Contract.objects.filter(
+            contract_number=spec["contract_number"]
+        ).first()
         if existing:
             summary["reused"].append(f"contrato {existing.contract_number}")
             return existing
@@ -230,35 +249,66 @@ class Command(BaseCommand):
         return contract
 
     def _ensure_document(self, spec, contracts, user, today, summary):
-        existing = Document.objects.filter(**{f"ai_extracted_data__{DEMO_SEED_KEY}": spec["key"]}).first()
+        existing = Document.objects.filter(
+            **{f"ai_extracted_data__{DEMO_SEED_KEY}": spec["key"]}
+        ).first()
         if existing:
             summary["reused"].append(f"documento {existing.filing_number}")
             return existing
 
-        contract = contracts[spec["contract_index"]] if spec.get("contract_index") is not None else None
-        pdf_contract_number = contract.contract_number if contract else (spec.get("ai_contract_number") or "SIN-CONTRATO")
+        contract = (
+            contracts[spec["contract_index"]]
+            if spec.get("contract_index") is not None
+            else None
+        )
+        pdf_contract_number = (
+            contract.contract_number
+            if contract
+            else (spec.get("ai_contract_number") or "SIN-CONTRATO")
+        )
         pdf_client = contract.client if contract else None
         pdf_bytes = sample_pdf(
             spec["kind"],
             contract=pdf_contract_number,
             nit=pdf_client.identification_number if pdf_client else "900.000.000-0",
-            client=pdf_client.name if pdf_client else (spec.get("ai_client_name") or "Cliente externo"),
-            address=contract.property_address if contract else "Inmueble por identificar",
+            client=pdf_client.name
+            if pdf_client
+            else (spec.get("ai_client_name") or "Cliente externo"),
+            address=contract.property_address
+            if contract
+            else "Inmueble por identificar",
             issued=spec["document_date"].isoformat(),
             end=(spec["expiration_date"] or today).isoformat(),
         )
 
         document_type = (
-            DocumentType.objects.filter(code=spec["document_type_code"]).first() if spec.get("document_type_code") else None
+            DocumentType.objects.filter(code=spec["document_type_code"]).first()
+            if spec.get("document_type_code")
+            else None
         )
         ai_data = {
             DEMO_SEED_KEY: spec["key"],
-            "contract_number": contract.contract_number if contract else spec.get("ai_contract_number"),
-            "client_identification": pdf_client.identification_number.replace(".", "").replace("-", "") if pdf_client else None,
-            "client_name": pdf_client.name if pdf_client else spec.get("ai_client_name"),
-            "document_type": {"poliza": "POLIZA", "factura": "FACTURA", "carta": "CARTA_SOLICITUD", "certificado": "OTRO"}[spec["kind"]],
+            "contract_number": contract.contract_number
+            if contract
+            else spec.get("ai_contract_number"),
+            "client_identification": pdf_client.identification_number.replace(
+                ".", ""
+            ).replace("-", "")
+            if pdf_client
+            else None,
+            "client_name": pdf_client.name
+            if pdf_client
+            else spec.get("ai_client_name"),
+            "document_type": {
+                "poliza": "POLIZA",
+                "factura": "FACTURA",
+                "carta": "CARTA_SOLICITUD",
+                "certificado": "OTRO",
+            }[spec["kind"]],
             "document_date": spec["document_date"].isoformat(),
-            "expiration_date": spec["expiration_date"].isoformat() if spec["expiration_date"] else None,
+            "expiration_date": spec["expiration_date"].isoformat()
+            if spec["expiration_date"]
+            else None,
             "extracted_text_summary": spec["summary"],
             "confidence_score": spec["confidence"],
             "model_used": "seed_demo_data",
@@ -271,7 +321,11 @@ class Command(BaseCommand):
             content = ContentFile(pdf_bytes, name=spec["filename"])
             file_hash = compute_sha256(content)
             stored_key = store_document_file(
-                build_object_key(filing_number, spec["filename"], contract.digital_record if contract else None),
+                build_object_key(
+                    filing_number,
+                    spec["filename"],
+                    contract.digital_record if contract else None,
+                ),
                 content,
             )
             is_processed = spec["status"] == Document.ProcessingStatus.PROCESSED
@@ -290,20 +344,35 @@ class Command(BaseCommand):
                 ai_confidence_score=spec["confidence"],
                 document_date=spec["document_date"] if is_processed else None,
                 expiration_date=spec["expiration_date"] if is_processed else None,
-                registered_by=None if spec["source_channel"] == Document.SourceChannel.WEB_PORTAL else user,
+                registered_by=None
+                if spec["source_channel"] == Document.SourceChannel.WEB_PORTAL
+                else user,
                 external_sender_name=spec.get("external_sender_name", ""),
             )
             log_action(
                 document,
                 AuditLog.Action.UPLOAD,
                 user=document.registered_by,
-                details={"filing_number": filing_number, "file_hash": file_hash, "source_channel": spec["source_channel"], "seed": True},
+                details={
+                    "filing_number": filing_number,
+                    "file_hash": file_hash,
+                    "source_channel": spec["source_channel"],
+                    "seed": True,
+                },
             )
-            classify_details = {"confidence": spec["confidence"], "threshold": 0.85, "seed": True}
+            classify_details = {
+                "confidence": spec["confidence"],
+                "threshold": 0.85,
+                "seed": True,
+            }
             if is_processed:
-                classify_details.update({"auto_associated": True, "contract_resolution": "contract_number"})
+                classify_details.update(
+                    {"auto_associated": True, "contract_resolution": "contract_number"}
+                )
             else:
-                classify_details.update({"needs_human_validation": True, "reason": spec.get("reason")})
+                classify_details.update(
+                    {"needs_human_validation": True, "reason": spec.get("reason")}
+                )
             log_action(document, AuditLog.Action.AI_CLASSIFY, details=classify_details)
 
         summary["created"].append(f"documento {document.filing_number} ({spec['key']})")
@@ -311,15 +380,29 @@ class Command(BaseCommand):
 
     def _report(self, user, clients, contracts, documents, alerts, summary):
         self.stdout.write(self.style.MIGRATE_HEADING("Datos de demostración Brevetto"))
-        self.stdout.write(f"  Usuario admin: {user.username} (is_staff={user.is_staff})")
-        self.stdout.write(f"  Clientes:      {len(clients)}  | Contratos: {len(contracts)}  | Documentos: {len(documents)}")
+        self.stdout.write(
+            f"  Usuario admin: {user.username} (is_staff={user.is_staff})"
+        )
+        self.stdout.write(
+            f"  Clientes:      {len(clients)}  | Contratos: {len(contracts)}  | Documentos: {len(documents)}"
+        )
         for doc in documents:
-            contract = doc.digital_record.contract.contract_number if doc.digital_record else "—"
+            contract = (
+                doc.digital_record.contract.contract_number
+                if doc.digital_record
+                else "—"
+            )
             exp = doc.expiration_date.isoformat() if doc.expiration_date else "—"
-            self.stdout.write(f"    - {doc.filing_number}  {doc.processing_status:<18} contrato={contract:<14} vence={exp}  {doc.original_filename}")
+            self.stdout.write(
+                f"    - {doc.filing_number}  {doc.processing_status:<18} contrato={contract:<14} vence={exp}  {doc.original_filename}"
+            )
         if alerts is not None:
             self.stdout.write(
                 f"  Alertas de vencimiento: {alerts['alerts_created']} nuevas "
                 f"(vencidos={alerts['expired']}, críticos={alerts['critical']}, aviso={alerts['warning']})"
             )
-        self.stdout.write(self.style.SUCCESS(f"  Creados: {len(summary['created'])} · Reutilizados: {len(summary['reused'])}"))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"  Creados: {len(summary['created'])} · Reutilizados: {len(summary['reused'])}"
+            )
+        )

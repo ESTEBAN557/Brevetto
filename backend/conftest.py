@@ -1,4 +1,5 @@
 """Fixtures compartidas para la suite de pruebas de Brevetto (pytest-django)."""
+
 from datetime import date
 from unittest.mock import patch
 
@@ -19,7 +20,9 @@ def in_memory_storage(settings):
     settings.AWS_QUERYSTRING_EXPIRE = 900
     settings.STORAGES = {
         "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
-        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        },
     }
 
 
@@ -33,7 +36,9 @@ def mock_celery_delay():
 # --------------------------------------------------------------- usuarios ---
 @pytest.fixture
 def user(db):
-    return get_user_model().objects.create_user(username="analista", password="secreto-123")
+    return get_user_model().objects.create_user(
+        username="analista", password="secreto-123"
+    )
 
 
 @pytest.fixture
@@ -98,7 +103,9 @@ def document(db, user):
 
 
 # ---------------------------------------------------------------- archivos ---
-def make_pdf(name="documento.pdf", size=2048, content_type="application/pdf") -> SimpleUploadedFile:
+def make_pdf(
+    name="documento.pdf", size=2048, content_type="application/pdf"
+) -> SimpleUploadedFile:
     header = b"%PDF-1.4\n"
     body = header + b"0" * max(0, size - len(header))
     return SimpleUploadedFile(name, body, content_type=content_type)

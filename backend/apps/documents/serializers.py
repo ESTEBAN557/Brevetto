@@ -1,4 +1,5 @@
 """Serializers DRF del módulo de radicación y documentos (docs/04_API_SPECIFICATION.md)."""
+
 from __future__ import annotations
 
 from django.conf import settings
@@ -30,7 +31,9 @@ def _resolve_contract(contract_id):
         .first()
     )
     if contract is None:
-        raise serializers.ValidationError({"contract_id": "El contrato indicado no existe."})
+        raise serializers.ValidationError(
+            {"contract_id": "El contrato indicado no existe."}
+        )
     return contract
 
 
@@ -44,14 +47,18 @@ class DocumentUploadSerializer(serializers.Serializer):
     )
     contract_id = serializers.UUIDField(required=False, allow_null=True)
     document_date = serializers.DateField(required=False, allow_null=True)
-    external_sender_name = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    external_sender_name = serializers.CharField(
+        required=False, allow_blank=True, max_length=255
+    )
 
     def validate_file(self, file):
         return _validate_file(file)
 
     def validate(self, attrs):
         contract_id = attrs.pop("contract_id", None)
-        attrs["digital_record"] = _resolve_contract(contract_id).digital_record if contract_id else None
+        attrs["digital_record"] = (
+            _resolve_contract(contract_id).digital_record if contract_id else None
+        )
         return attrs
 
 
@@ -80,7 +87,9 @@ class DocumentBatchUploadSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         contract_id = attrs.pop("contract_id", None)
-        attrs["digital_record"] = _resolve_contract(contract_id).digital_record if contract_id else None
+        attrs["digital_record"] = (
+            _resolve_contract(contract_id).digital_record if contract_id else None
+        )
         return attrs
 
 
@@ -111,7 +120,9 @@ class DocumentSerializer(serializers.ModelSerializer):
     """Representación completa usada en listados, detalle y bandeja HITL."""
 
     document_type = DocumentTypeCompactSerializer(read_only=True)
-    contract_id = serializers.UUIDField(source="digital_record.contract_id", read_only=True, default=None)
+    contract_id = serializers.UUIDField(
+        source="digital_record.contract_id", read_only=True, default=None
+    )
     contract_number = serializers.CharField(
         source="digital_record.contract.contract_number", read_only=True, default=None
     )
@@ -124,7 +135,9 @@ class DocumentSerializer(serializers.ModelSerializer):
     client_phone = serializers.CharField(
         source="digital_record.contract.client.phone", read_only=True, default=None
     )
-    registered_by = serializers.CharField(source="registered_by.username", read_only=True, default=None)
+    registered_by = serializers.CharField(
+        source="registered_by.username", read_only=True, default=None
+    )
     needs_human_review = serializers.BooleanField(read_only=True)
     days_to_expiration = serializers.SerializerMethodField()
     expiration_stage = serializers.SerializerMethodField()
@@ -182,13 +195,19 @@ class DocumentValidateSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         attrs["contract"] = _resolve_contract(attrs.pop("contract_id"))
-        document_type = DocumentType.objects.filter(pk=attrs.pop("document_type_id")).first()
+        document_type = DocumentType.objects.filter(
+            pk=attrs.pop("document_type_id")
+        ).first()
         if document_type is None:
-            raise serializers.ValidationError({"document_type_id": "El tipo documental no existe."})
+            raise serializers.ValidationError(
+                {"document_type_id": "El tipo documental no existe."}
+            )
         attrs["document_type"] = document_type
         if document_type.requires_expiration and not attrs.get("expiration_date"):
             raise serializers.ValidationError(
-                {"expiration_date": f"El tipo '{document_type.code}' exige fecha de vencimiento."}
+                {
+                    "expiration_date": f"El tipo '{document_type.code}' exige fecha de vencimiento."
+                }
             )
         return attrs
 
@@ -202,7 +221,12 @@ class DocumentMetadataUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Document
-        fields = ("document_type", "expiration_date", "document_date", "external_sender_name")
+        fields = (
+            "document_type",
+            "expiration_date",
+            "document_date",
+            "external_sender_name",
+        )
         extra_kwargs = {
             "expiration_date": {"required": False, "allow_null": True},
             "document_date": {"required": False, "allow_null": True},
@@ -211,7 +235,9 @@ class DocumentMetadataUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         if not attrs:
-            raise serializers.ValidationError("Debe enviar al menos un campo de metadatos para actualizar.")
+            raise serializers.ValidationError(
+                "Debe enviar al menos un campo de metadatos para actualizar."
+            )
         return attrs
 
 
@@ -224,12 +250,22 @@ class PresignedUrlSerializer(serializers.Serializer):
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
-    performed_by = serializers.CharField(source="performed_by.username", read_only=True, default=None)
-    filing_number = serializers.CharField(source="document.filing_number", read_only=True)
-    original_filename = serializers.CharField(source="document.original_filename", read_only=True)
-    contract_id = serializers.UUIDField(source="document.digital_record.contract_id", read_only=True, default=None)
+    performed_by = serializers.CharField(
+        source="performed_by.username", read_only=True, default=None
+    )
+    filing_number = serializers.CharField(
+        source="document.filing_number", read_only=True
+    )
+    original_filename = serializers.CharField(
+        source="document.original_filename", read_only=True
+    )
+    contract_id = serializers.UUIDField(
+        source="document.digital_record.contract_id", read_only=True, default=None
+    )
     contract_number = serializers.CharField(
-        source="document.digital_record.contract.contract_number", read_only=True, default=None
+        source="document.digital_record.contract.contract_number",
+        read_only=True,
+        default=None,
     )
     action_label = serializers.CharField(source="get_action_display", read_only=True)
     immutable = serializers.SerializerMethodField()

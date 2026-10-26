@@ -5,6 +5,7 @@ La sesión del portal es un token firmado (HMAC con SECRET_KEY) y con vencimient
 sin estado en base de datos. Identifica al contrato validado y evita enumerar
 contratos: cualquier fallo de verificación responde con el mismo mensaje.
 """
+
 from __future__ import annotations
 
 import re
@@ -19,7 +20,10 @@ from apps.core.models import Contract, DocumentType
 PORTAL_TOKEN_SALT = "brevetto.portal.session"
 RECEIPT_SALT = "brevetto.portal.receipt"
 
-PORTAL_ALLOWED_STATUSES = (Contract.ContractStatus.ACTIVE, Contract.ContractStatus.IN_RENEWAL)
+PORTAL_ALLOWED_STATUSES = (
+    Contract.ContractStatus.ACTIVE,
+    Contract.ContractStatus.IN_RENEWAL,
+)
 
 
 class PortalVerificationError(Exception):
@@ -47,16 +51,18 @@ def verify_contract(contract_number: str, identification_number: str) -> Contrac
     )
     if contract is None or contract.status not in PORTAL_ALLOWED_STATUSES:
         raise PortalVerificationError()
-    if normalize_identification(contract.client.identification_number) != normalize_identification(
-        identification_number
-    ):
+    if normalize_identification(
+        contract.client.identification_number
+    ) != normalize_identification(identification_number):
         raise PortalVerificationError()
     return contract
 
 
 def issue_portal_token(contract: Contract) -> str:
     signer = signing.TimestampSigner(salt=PORTAL_TOKEN_SALT)
-    return signer.sign_object({"contract_id": str(contract.pk), "contract_number": contract.contract_number})
+    return signer.sign_object(
+        {"contract_id": str(contract.pk), "contract_number": contract.contract_number}
+    )
 
 
 def resolve_portal_token(token: str) -> Contract:
@@ -64,9 +70,13 @@ def resolve_portal_token(token: str) -> Contract:
         raise PortalTokenError("Token de portal requerido.")
     signer = signing.TimestampSigner(salt=PORTAL_TOKEN_SALT)
     try:
-        payload = signer.unsign_object(token, max_age=timedelta(seconds=session_ttl_seconds()))
+        payload = signer.unsign_object(
+            token, max_age=timedelta(seconds=session_ttl_seconds())
+        )
     except signing.SignatureExpired as exc:
-        raise PortalTokenError("La sesión del portal expiró. Valide nuevamente su contrato.") from exc
+        raise PortalTokenError(
+            "La sesión del portal expiró. Valide nuevamente su contrato."
+        ) from exc
     except signing.BadSignature as exc:
         raise PortalTokenError("Token de portal inválido.") from exc
 
@@ -94,9 +104,9 @@ def mask_identification(value: str) -> str:
 
 def portal_document_types():
     """Tipos que un inquilino puede radicar desde el portal (excluye los internos)."""
-    return DocumentType.objects.exclude(code__in=("CONTRATO", "ACTA_ENTREGA", "NOTIFICACION")).order_by(
-        "category", "name"
-    )
+    return DocumentType.objects.exclude(
+        code__in=("CONTRATO", "ACTA_ENTREGA", "NOTIFICACION")
+    ).order_by("category", "name")
 
 
 def expiring_documents(contract: Contract, within_days: int = 30):

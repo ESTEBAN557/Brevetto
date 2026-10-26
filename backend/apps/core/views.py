@@ -1,4 +1,5 @@
 """Endpoints REST del núcleo: /api/v1/clients/, /api/v1/contracts/, /api/v1/document-types/."""
+
 from __future__ import annotations
 
 from django.http import StreamingHttpResponse
@@ -10,7 +11,11 @@ from rest_framework.response import Response
 
 from apps.core.filters import ClientFilter, ContractFilter
 from apps.core.models import Client, Contract, DocumentType
-from apps.core.serializers import ClientSerializer, ContractSerializer, DocumentTypeSerializer
+from apps.core.serializers import (
+    ClientSerializer,
+    ContractSerializer,
+    DocumentTypeSerializer,
+)
 from apps.core.services import create_contract
 from apps.documents.models import AuditLog
 from apps.documents.serializers import AuditLogSerializer, DocumentSerializer
@@ -26,11 +31,22 @@ class ClientViewSet(viewsets.ModelViewSet):
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
     permission_classes = (IsAuthenticated,)
-    filter_backends = (DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter)
+    filter_backends = (
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    )
     filterset_class = ClientFilter
     search_fields = ("name", "identification_number", "email")
     ordering_fields = ("name", "created_at")
-    http_method_names = ("get", "post", "patch", "put", "head", "options")  # sin DELETE: PROTECT
+    http_method_names = (
+        "get",
+        "post",
+        "patch",
+        "put",
+        "head",
+        "options",
+    )  # sin DELETE: PROTECT
 
 
 class ContractViewSet(viewsets.ModelViewSet):
@@ -39,9 +55,18 @@ class ContractViewSet(viewsets.ModelViewSet):
     queryset = Contract.objects.select_related("client", "digital_record").all()
     serializer_class = ContractSerializer
     permission_classes = (IsAuthenticated,)
-    filter_backends = (DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter)
+    filter_backends = (
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    )
     filterset_class = ContractFilter
-    search_fields = ("contract_number", "client__name", "client__identification_number", "property_address")
+    search_fields = (
+        "contract_number",
+        "client__name",
+        "client__identification_number",
+        "property_address",
+    )
     ordering_fields = ("start_date", "end_date", "contract_number", "created_at")
     ordering = ("-start_date", "contract_number")
     http_method_names = ("get", "post", "patch", "put", "head", "options")
@@ -59,12 +84,9 @@ class ContractViewSet(viewsets.ModelViewSet):
     def documents(self, request, pk=None):
         """Expediente digital: documentos del contrato, cronológicos y filtrables por tipo."""
         contract = self.get_object()
-        queryset = (
-            contract.digital_record.documents.select_related(
-                "document_type", "registered_by", "digital_record__contract__client"
-            )
-            .order_by("-created_at")
-        )
+        queryset = contract.digital_record.documents.select_related(
+            "document_type", "registered_by", "digital_record__contract__client"
+        ).order_by("-created_at")
         document_type = request.query_params.get("document_type")
         if document_type:
             queryset = queryset.filter(document_type__code=document_type)
@@ -73,7 +95,9 @@ class ContractViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(document_type__category=category)
 
         page = self.paginate_queryset(queryset)
-        serializer = DocumentSerializer(page if page is not None else queryset, many=True)
+        serializer = DocumentSerializer(
+            page if page is not None else queryset, many=True
+        )
         if page is not None:
             return self.get_paginated_response(serializer.data)
         return Response(serializer.data)
@@ -87,7 +111,11 @@ class ContractViewSet(viewsets.ModelViewSet):
 
         filename = export_filename(contract)
         response = StreamingHttpResponse(
-            iter_record_zip(contract, documents, generated_by=getattr(request.user, "username", None)),
+            iter_record_zip(
+                contract,
+                documents,
+                generated_by=getattr(request.user, "username", None),
+            ),
             content_type="application/zip",
         )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
@@ -101,12 +129,16 @@ class ContractViewSet(viewsets.ModelViewSet):
         contract = self.get_object()
         logs = (
             AuditLog.objects.filter(document__digital_record__contract=contract)
-            .select_related("performed_by", "document", "document__digital_record__contract")
+            .select_related(
+                "performed_by", "document", "document__digital_record__contract"
+            )
             .order_by("-timestamp")
         )
         actions = request.query_params.get("action")
         if actions:
-            logs = logs.filter(action__in=[a.strip() for a in actions.split(",") if a.strip()])
+            logs = logs.filter(
+                action__in=[a.strip() for a in actions.split(",") if a.strip()]
+            )
         page = self.paginate_queryset(logs)
         serializer = AuditLogSerializer(page if page is not None else logs, many=True)
         if page is not None:

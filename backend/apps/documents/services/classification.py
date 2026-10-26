@@ -5,6 +5,7 @@ Un documento solo se archiva automáticamente cuando la confianza del modelo es
 >= settings.AI_CONFIDENCE_THRESHOLD (0.85) Y el contrato se resolvió sin
 ambigüedad. En cualquier otro caso pasa a la bandeja REQUIERE_REVISION.
 """
+
 from __future__ import annotations
 
 import re
@@ -37,7 +38,9 @@ class ContractResolution:
 
     def __init__(self, contract: Contract | None, method: str, candidates: int = 0):
         self.contract = contract
-        self.method = method          # contract_number | client_identification | none | ambiguous
+        self.method = (
+            method  # contract_number | client_identification | none | ambiguous
+        )
         self.candidates = candidates
 
     @property
@@ -118,7 +121,9 @@ def apply_classification(document: Document, ai_data: dict[str, Any]) -> str:
         "threshold": threshold,
         "contract_resolution": resolution.method,
         "suggested_contract_number": (
-            resolution.contract.contract_number if resolution.contract else ai_data.get("contract_number")
+            resolution.contract.contract_number
+            if resolution.contract
+            else ai_data.get("contract_number")
         ),
         "suggested_document_type": document_type.code if document_type else None,
     }
@@ -129,16 +134,22 @@ def apply_classification(document: Document, ai_data: dict[str, Any]) -> str:
         document.digital_record = resolution.contract.digital_record
         if document_type is not None:
             document.document_type = document_type
-        document.document_date = parse_iso_date(ai_data.get("document_date")) or document.document_date
-        document.expiration_date = parse_iso_date(ai_data.get("expiration_date")) or document.expiration_date
+        document.document_date = (
+            parse_iso_date(ai_data.get("document_date")) or document.document_date
+        )
+        document.expiration_date = (
+            parse_iso_date(ai_data.get("expiration_date")) or document.expiration_date
+        )
         document.processing_status = Document.ProcessingStatus.PROCESSED
         details["auto_associated"] = True
     else:
         document.processing_status = Document.ProcessingStatus.NEEDS_REVIEW
         details["needs_human_validation"] = True
         details["reason"] = (
-            "low_confidence" if confidence < threshold
-            else "ambiguous_contract" if resolution.is_ambiguous
+            "low_confidence"
+            if confidence < threshold
+            else "ambiguous_contract"
+            if resolution.is_ambiguous
             else "contract_not_found"
         )
         if resolution.is_ambiguous:

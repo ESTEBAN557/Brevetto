@@ -6,6 +6,7 @@ Modelos de radicación y documentos de Brevetto (apps.documents).
 - AuditLog: bitácora inmutable (append-only) de todas las acciones sobre documentos.
 Ver docs/03_DATABASE_MODELS.md.
 """
+
 import uuid
 
 from django.conf import settings
@@ -41,7 +42,9 @@ class FilingSequence(models.Model):
         Devuelve un radicado con el formato `RAD-YYYYMMDD-XXXXXX`.
         """
         with transaction.atomic():
-            seq, _created = cls.objects.select_for_update().get_or_create(date=target_date)
+            seq, _created = cls.objects.select_for_update().get_or_create(
+                date=target_date
+            )
             seq.last_number += 1
             seq.save(update_fields=["last_number"])
             return cls.format_filing_number(target_date, seq.last_number)
@@ -82,14 +85,20 @@ class Document(TimeStampedModel):
         DocumentType, on_delete=models.SET_NULL, null=True, blank=True
     )
 
-    file_path = models.CharField(max_length=1000, help_text="URI del objeto en S3 / MinIO")
+    file_path = models.CharField(
+        max_length=1000, help_text="URI del objeto en S3 / MinIO"
+    )
     original_filename = models.CharField(max_length=255)
-    file_hash = models.CharField(max_length=64, help_text="Checksum SHA-256", db_index=True)
+    file_hash = models.CharField(
+        max_length=64, help_text="Checksum SHA-256", db_index=True
+    )
     file_size_bytes = models.BigIntegerField()
     mime_type = models.CharField(max_length=100, default="application/pdf")
 
     source_channel = models.CharField(
-        max_length=30, choices=SourceChannel.choices, default=SourceChannel.DIGITAL_INTERNAL
+        max_length=30,
+        choices=SourceChannel.choices,
+        default=SourceChannel.DIGITAL_INTERNAL,
     )
     processing_status = models.CharField(
         max_length=30,
@@ -113,7 +122,9 @@ class Document(TimeStampedModel):
         related_name="registered_documents",
     )
     external_sender_name = models.CharField(
-        max_length=255, blank=True, help_text="Nombre del remitente externo si vino del portal"
+        max_length=255,
+        blank=True,
+        help_text="Nombre del remitente externo si vino del portal",
     )
 
     class Meta:
@@ -121,7 +132,10 @@ class Document(TimeStampedModel):
         verbose_name_plural = "Documentos Radicados"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["processing_status", "-created_at"], name="doc_status_created_idx"),
+            models.Index(
+                fields=["processing_status", "-created_at"],
+                name="doc_status_created_idx",
+            ),
         ]
 
     def __str__(self):
@@ -147,7 +161,9 @@ class AuditLogQuerySet(models.QuerySet):
         raise AuditLogImmutableError("AuditLog es append-only: DELETE no permitido.")
 
     def bulk_update(self, *args, **kwargs):
-        raise AuditLogImmutableError("AuditLog es append-only: bulk_update no permitido.")
+        raise AuditLogImmutableError(
+            "AuditLog es append-only: bulk_update no permitido."
+        )
 
 
 class AuditLog(models.Model):
@@ -163,7 +179,9 @@ class AuditLog(models.Model):
         EXPIRATION_ALERT = "ALERTA_VENCIMIENTO", "Alerta de Vencimiento"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="audit_logs")
+    document = models.ForeignKey(
+        Document, on_delete=models.CASCADE, related_name="audit_logs"
+    )
     action = models.CharField(max_length=30, choices=Action.choices, db_index=True)
     performed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
@@ -181,7 +199,9 @@ class AuditLog(models.Model):
         ordering = ["-timestamp"]
 
     def __str__(self):
-        return f"[{self.timestamp:%Y-%m-%d %H:%M:%S}] {self.action} - {self.document_id}"
+        return (
+            f"[{self.timestamp:%Y-%m-%d %H:%M:%S}] {self.action} - {self.document_id}"
+        )
 
     def save(self, *args, **kwargs):
         if not self._state.adding:
@@ -191,4 +211,6 @@ class AuditLog(models.Model):
         return super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        raise AuditLogImmutableError("AuditLog es append-only: no se puede eliminar un registro.")
+        raise AuditLogImmutableError(
+            "AuditLog es append-only: no se puede eliminar un registro."
+        )
