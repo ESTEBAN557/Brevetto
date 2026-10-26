@@ -1,0 +1,81 @@
+# =============================================================================
+# Brevetto – Python project configuration
+# Tools: Ruff (linting + formatting), mypy (type checking), pytest
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Ruff – linting and formatting
+# Docs: https://docs.astral.sh/ruff/
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+# Directories to analyse
+src = ["apps", "config"]
+
+# Exclude generated files that should not be reformatted manually
+exclude = [
+    ".git",
+    "__pycache__",
+    "*/migrations/*",
+    ".venv",
+    "venv",
+]
+
+[tool.ruff.lint]
+# Rule sets enabled for the project:
+#   E / W  – pycodestyle errors and warnings
+#   F      – pyflakes (undefined names, unused imports, etc.)
+#   I      – isort (import ordering)
+#   UP     – pyupgrade (modernise Python syntax)
+#   B      – flake8-bugbear (common bugs and design issues)
+#   SIM    – flake8-simplify (simplifiable expressions)
+select = ["E", "W", "F", "I", "UP", "B", "SIM"]
+
+# Rules that are explicitly ignored with justification:
+#   E501 – line too long (handled by the formatter, not the linter)
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config"]
+
+[tool.ruff.format]
+# Use double quotes to match Django and DRF conventions
+quote-style = "double"
+indent-style = "space"
+
+# ---------------------------------------------------------------------------
+# mypy – static type checking
+# Docs: https://mypy.readthedocs.io/
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+# Directories that mypy should analyse
+files = ["apps", "config"]
+
+# Strictness settings – introduced progressively
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+
+# Django plugin for accurate model and queryset type checking
+plugins = ["mypy_django_plugin.main"]
+
+[[tool.mypy.overrides]]
+# Generated migration files are excluded from type checking
+module = ["*.migrations.*"]
+ignore_errors = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+
+# ---------------------------------------------------------------------------
+# pytest – test runner configuration
+# The main pytest configuration remains in pytest.ini for Django compatibility.
+# This section documents the tool reference only.
+# Docs: https://docs.pytest.org/
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+# pytest is configured via pytest.ini; settings are not duplicated here.
