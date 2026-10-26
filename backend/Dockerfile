@@ -20,6 +20,12 @@ COPY . /app
 
 RUN chmod +x /app/entrypoint.sh
 
+# Ejecutar la aplicación como usuario no-root para reducir el impacto
+# de una posible comprometida del contenedor (Security-Analysis §4).
+RUN useradd --create-home --uid 1000 appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8000
 
 ENTRYPOINT ["/app/entrypoint.sh"]
