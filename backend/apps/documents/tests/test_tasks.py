@@ -3,6 +3,7 @@ Pruebas del pipeline de IA (US-009): tarea Celery, regla HITL y adaptador Gemini
 
 Gemini se simula con mocks: nunca se realizan llamadas de red.
 """
+
 from datetime import date
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -102,7 +103,9 @@ class TestProcessDocumentContentTask:
         assert stored_document.processing_status == Document.ProcessingStatus.PROCESSED
 
     def test_high_confidence_but_unknown_contract_goes_to_review(self, stored_document, contract):
-        with patch(EXTRACT_PATH, return_value=ai_payload(contract_number="CONT-9999-001", client_identification=None)):
+        with patch(
+            EXTRACT_PATH, return_value=ai_payload(contract_number="CONT-9999-001", client_identification=None)
+        ):
             process_document_content_task.apply(args=[str(stored_document.pk)])
 
         stored_document.refresh_from_db()
@@ -122,7 +125,9 @@ class TestProcessDocumentContentTask:
         log = stored_document.audit_logs.get(action=AuditLog.Action.AI_CLASSIFY)
         assert log.details["contract_resolution"] == "client_identification"
 
-    def test_ambiguous_client_with_several_active_contracts_goes_to_review(self, stored_document, contract, tenant):
+    def test_ambiguous_client_with_several_active_contracts_goes_to_review(
+        self, stored_document, contract, tenant
+    ):
         Contract.objects.create(
             contract_number="CONT-2026-043",
             client=tenant,
@@ -266,7 +271,9 @@ class TestAIExtractionParsing:
             parse_model_json("")
 
     def test_normalize_clamps_confidence_and_defaults_type(self):
-        data = normalize_extraction({"confidence_score": "1.7", "document_type": "recibo", "contract_number": "null"})
+        data = normalize_extraction(
+            {"confidence_score": "1.7", "document_type": "recibo", "contract_number": "null"}
+        )
         assert data["confidence_score"] == 1.0
         assert data["document_type"] == "OTRO"
         assert data["contract_number"] is None
@@ -324,7 +331,9 @@ class TestGeminiExtractor:
         fake_client = MagicMock()
         fake_client.models.generate_content.side_effect = [
             RuntimeError("503 UNAVAILABLE: This model is currently experiencing high demand"),
-            SimpleNamespace(text='{"document_type": "POLIZA", "confidence_score": 0.9, "extracted_text_summary": "ok"}'),
+            SimpleNamespace(
+                text='{"document_type": "POLIZA", "confidence_score": 0.9, "extracted_text_summary": "ok"}'
+            ),
         ]
 
         with patch("google.genai.Client", return_value=fake_client):

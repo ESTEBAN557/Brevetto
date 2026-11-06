@@ -101,7 +101,9 @@ class ClientDocumentSerializer(serializers.ModelSerializer):
 
 class ClientDocumentUploadSerializer(serializers.Serializer):
     contract = serializers.PrimaryKeyRelatedField(queryset=Contract.objects.all())
-    document_type = serializers.SlugRelatedField(slug_field="code", queryset=services.publishable_document_types())
+    document_type = serializers.SlugRelatedField(
+        slug_field="code", queryset=services.publishable_document_types()
+    )
     file = serializers.FileField()
     document_date = serializers.DateField(required=False, allow_null=True)
     expiration_date = serializers.DateField(required=False, allow_null=True)

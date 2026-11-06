@@ -200,7 +200,9 @@ class MeView(ClientAPIView):
 
 class HomeView(ClientAPIView):
     def get(self, request):
-        contract = get_object_or_404(services.client_contracts(self.client), pk=request.query_params.get("contract"))
+        contract = get_object_or_404(
+            services.client_contracts(self.client), pk=request.query_params.get("contract")
+        )
         documents = services.client_documents(self.client, contract_id=contract.pk)
         counts = {
             category: documents.filter(document_type__code__in=codes).count()
@@ -228,14 +230,18 @@ class DocumentListView(ClientAPIView, ListAPIView):
     def get_queryset(self):
         params = self.request.query_params
         category = params.get("category")
-        queryset = services.client_documents(self.client, category=category, contract_id=params.get("contract"))
+        queryset = services.client_documents(
+            self.client, category=category, contract_id=params.get("contract")
+        )
         if params.get("year", "").isdigit():
             queryset = queryset.filter(document_date__year=int(params["year"]))
         if params.get("month", "").isdigit():
             queryset = queryset.filter(document_date__month=int(params["month"]))
         search = params.get("q", "").strip()
         if search:
-            queryset = queryset.filter(Q(filing_number__icontains=search) | Q(original_filename__icontains=search))
+            queryset = queryset.filter(
+                Q(filing_number__icontains=search) | Q(original_filename__icontains=search)
+            )
         return queryset
 
     def post(self, request):
@@ -285,7 +291,9 @@ class DocumentListView(ClientAPIView, ListAPIView):
 
 class DocumentOptionsView(ClientAPIView):
     def get(self, request):
-        return Response({"document_types": DocumentTypeSerializer(services.publishable_document_types(), many=True).data})
+        return Response(
+            {"document_types": DocumentTypeSerializer(services.publishable_document_types(), many=True).data}
+        )
 
 
 class DocumentDownloadView(ClientAPIView):
@@ -323,7 +331,9 @@ class ServiceRequestListCreateView(ClientAPIView):
         queryset = ServiceRequest.objects.filter(client=self.client).select_related("contract")
         search = request.query_params.get("q", "").strip()
         if search:
-            filters = Q(subject__icontains=search) | Q(service__icontains=search) | Q(subcategory__icontains=search)
+            filters = (
+                Q(subject__icontains=search) | Q(service__icontains=search) | Q(subcategory__icontains=search)
+            )
             if search.lstrip("#").isdigit():
                 filters |= Q(pk=int(search.lstrip("#")))
             queryset = queryset.filter(filters)
@@ -397,7 +407,9 @@ class ServiceRequestAttachmentView(ServiceRequestMixin, ClientAPIView):
             for file in files:
                 validate_attachment(file)
         except DRFValidationError as exc:
-            return Response({"detail": " ".join(str(e) for e in exc.detail)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": " ".join(str(e) for e in exc.detail)}, status=status.HTTP_400_BAD_REQUEST
+            )
         created = [services.add_attachment(service_request, file, from_client=True) for file in files]
         return Response(AttachmentSerializer(created, many=True).data, status=status.HTTP_201_CREATED)
 

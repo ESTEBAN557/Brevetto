@@ -71,7 +71,8 @@ services:
     restart: unless-stopped
     command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       POSTGRES_HOST: db
       REDIS_URL: redis://redis:6379/0
@@ -100,7 +101,8 @@ services:
     # -B: incluye Celery beat (tarea periódica que re-encola documentos estancados)
     command: ["celery", "-A", "config", "worker", "-B", "-l", "info", "--concurrency=2", "--schedule=/tmp/celerybeat-schedule"]
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       POSTGRES_HOST: db
       REDIS_URL: redis://redis:6379/0

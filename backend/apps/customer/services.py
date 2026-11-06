@@ -136,14 +136,18 @@ def verify_login_code(client: Client, code: str) -> ClientAccount | None:
             return None
         login_code.consumed_at = now
         login_code.save(update_fields=["attempts", "consumed_at", "updated_at"])
-        account, _ = ClientAccount.objects.get_or_create(client=client, defaults={"email": client.email.lower()})
+        account, _ = ClientAccount.objects.get_or_create(
+            client=client, defaults={"email": client.email.lower()}
+        )
         account.last_login_at = now
         account.save(update_fields=["last_login_at", "updated_at"])
         return account
 
 
 def login_with_password(email: str, password: str) -> ClientAccount | None:
-    account = ClientAccount.objects.select_related("client").filter(email__iexact=(email or "").strip()).first()
+    account = (
+        ClientAccount.objects.select_related("client").filter(email__iexact=(email or "").strip()).first()
+    )
     if account is None:
         # Hash ficticio para igualar el tiempo de respuesta y no revelar si el correo existe.
         ClientAccount(password_hash="").check_password(password)

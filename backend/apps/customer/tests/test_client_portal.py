@@ -3,8 +3,8 @@
 from datetime import date
 
 import pytest
-from django.core.cache import cache
 from django.core import mail
+from django.core.cache import cache
 from rest_framework.test import APIClient
 
 from apps.core.models import Client, Contract, DocumentType
@@ -68,14 +68,18 @@ class TestOtpLogin:
         assert ClientAccount.objects.get(client=tenant).email == "contacto@logandina.co"
 
     def test_email_channel_sends_mail(self, anonymous_client, contract):
-        response = anonymous_client.post(f"{BASE}/auth/request-code/", {**NIT, "channel": "email"}, format="json")
+        response = anonymous_client.post(
+            f"{BASE}/auth/request-code/", {**NIT, "channel": "email"}, format="json"
+        )
         assert response.json()["channel"] == "email"
         assert response.json()["destination"].startswith("co")
         assert response.json()["dev_code"] in mail.outbox[0].body
 
     def test_unknown_client_gets_same_generic_answer_without_code(self, anonymous_client, contract):
         response = anonymous_client.post(
-            f"{BASE}/auth/request-code/", {"document_type": "NIT", "identification_number": "1"}, format="json"
+            f"{BASE}/auth/request-code/",
+            {"document_type": "NIT", "identification_number": "1"},
+            format="json",
         )
         assert response.status_code == 200
         assert "dev_code" not in response.json() and "destination" not in response.json()
@@ -83,20 +87,28 @@ class TestOtpLogin:
 
     def test_dev_echo_disabled_never_returns_code(self, anonymous_client, contract, settings):
         settings.CLIENT_OTP_DEV_ECHO = False
-        response = anonymous_client.post(f"{BASE}/auth/request-code/", NIT | {"channel": "sms"}, format="json")
+        response = anonymous_client.post(
+            f"{BASE}/auth/request-code/", NIT | {"channel": "sms"}, format="json"
+        )
         assert "dev_code" not in response.json()
 
     def test_wrong_code_is_rejected_and_locks_after_five_attempts(self, anonymous_client, contract, tenant):
-        sent = anonymous_client.post(f"{BASE}/auth/request-code/", NIT | {"channel": "sms"}, format="json").json()
+        sent = anonymous_client.post(
+            f"{BASE}/auth/request-code/", NIT | {"channel": "sms"}, format="json"
+        ).json()
         for _ in range(5):
             bad = anonymous_client.post(f"{BASE}/auth/verify-code/", NIT | {"code": "000000"}, format="json")
             assert bad.status_code == 400
         # Con el código correcto ya no sirve: se agotaron los intentos.
-        late = anonymous_client.post(f"{BASE}/auth/verify-code/", NIT | {"code": sent["dev_code"]}, format="json")
+        late = anonymous_client.post(
+            f"{BASE}/auth/verify-code/", NIT | {"code": sent["dev_code"]}, format="json"
+        )
         assert late.status_code == 400
 
     def test_code_is_single_use(self, anonymous_client, contract):
-        sent = anonymous_client.post(f"{BASE}/auth/request-code/", NIT | {"channel": "sms"}, format="json").json()
+        sent = anonymous_client.post(
+            f"{BASE}/auth/request-code/", NIT | {"channel": "sms"}, format="json"
+        ).json()
         body = NIT | {"code": sent["dev_code"]}
         assert anonymous_client.post(f"{BASE}/auth/verify-code/", body, format="json").status_code == 200
         assert anonymous_client.post(f"{BASE}/auth/verify-code/", body, format="json").status_code == 400
@@ -107,7 +119,9 @@ class TestOtpLogin:
         assert again.status_code == 429
 
     def test_code_is_stored_hashed(self, anonymous_client, contract, tenant):
-        sent = anonymous_client.post(f"{BASE}/auth/request-code/", NIT | {"channel": "sms"}, format="json").json()
+        sent = anonymous_client.post(
+            f"{BASE}/auth/request-code/", NIT | {"channel": "sms"}, format="json"
+        ).json()
         stored = LoginCode.objects.get()
         assert stored.code_hash != sent["dev_code"]
         assert stored.code_hash == _hash_code(sent["dev_code"], tenant.pk)
@@ -116,11 +130,16 @@ class TestOtpLogin:
 @pytest.mark.django_db
 class TestPasswordLogin:
     def test_set_password_then_login_with_email(self, client_api, anonymous_client):
-        assert client_api.post(f"{BASE}/auth/set-password/", {"password": "corta"}, format="json").status_code == 400
+        assert (
+            client_api.post(f"{BASE}/auth/set-password/", {"password": "corta"}, format="json").status_code
+            == 400
+        )
         ok = client_api.post(f"{BASE}/auth/set-password/", {"password": "Clave-segura-1"}, format="json")
         assert ok.status_code == 200
         login = anonymous_client.post(
-            f"{BASE}/auth/login/", {"email": "Contacto@logandina.co", "password": "Clave-segura-1"}, format="json"
+            f"{BASE}/auth/login/",
+            {"email": "Contacto@logandina.co", "password": "Clave-segura-1"},
+            format="json",
         )
         assert login.status_code == 200 and login.json()["account"]["has_password"] is True
 
@@ -168,13 +187,30 @@ class TestDocuments:
 
     def test_list_filters_by_category_year_month_and_search(self, client_api, contract):
         make_published_document(contract, "ESTADO_CUENTA")
-        make_published_document(contract, "ESTADO_CUENTA", document_date=date(2026, 9, 8), name="septiembre.pdf")
+        make_published_document(
+            contract, "ESTADO_CUENTA", document_date=date(2026, 9, 8), name="septiembre.pdf"
+        )
         make_published_document(contract, "FACTURA", name="factura.pdf")
         listing = client_api.get(f"{BASE}/documents/", {"category": "estados-de-cuenta"}).json()
         assert listing["count"] == 2
-        assert client_api.get(f"{BASE}/documents/", {"category": "estados-de-cuenta", "month": 9}).json()["count"] == 1
-        assert client_api.get(f"{BASE}/documents/", {"category": "estados-de-cuenta", "year": 2025}).json()["count"] == 0
-        assert client_api.get(f"{BASE}/documents/", {"category": "estados-de-cuenta", "q": "septiem"}).json()["count"] == 1
+        assert (
+            client_api.get(f"{BASE}/documents/", {"category": "estados-de-cuenta", "month": 9}).json()[
+                "count"
+            ]
+            == 1
+        )
+        assert (
+            client_api.get(f"{BASE}/documents/", {"category": "estados-de-cuenta", "year": 2025}).json()[
+                "count"
+            ]
+            == 0
+        )
+        assert (
+            client_api.get(f"{BASE}/documents/", {"category": "estados-de-cuenta", "q": "septiem"}).json()[
+                "count"
+            ]
+            == 1
+        )
 
     def test_unprocessed_documents_are_hidden(self, client_api, contract):
         document = make_published_document(contract, "ESTADO_CUENTA")
@@ -187,7 +223,10 @@ class TestDocuments:
         from apps.core.services import create_contract
 
         other_contract = create_contract(
-            contract_number="CONT-OTRO", client=other, property_address="X", start_date=date(2026, 1, 1),
+            contract_number="CONT-OTRO",
+            client=other,
+            property_address="X",
+            start_date=date(2026, 1, 1),
             end_date=date(2026, 12, 31),
         )
         foreign = make_published_document(other_contract, "ESTADO_CUENTA")
@@ -205,7 +244,11 @@ class TestDocuments:
     def test_client_can_file_a_document_in_own_contract(self, client_api, contract, pdf_factory):
         response = client_api.post(
             f"{BASE}/documents/",
-            {"contract": contract.pk, "document_type": "POLIZA_CUMPLIMIENTO", "file": pdf_factory("poliza.pdf")},
+            {
+                "contract": contract.pk,
+                "document_type": "POLIZA_CUMPLIMIENTO",
+                "file": pdf_factory("poliza.pdf"),
+            },
             format="multipart",
         )
         assert response.status_code == 201, response.content
@@ -262,7 +305,8 @@ class TestServiceRequests:
         service_request.change_status(ServiceRequest.Status.CLOSED, actor="Asesor", note="Resuelto")
         assert client_api.post(f"{url}/messages/", {"body": "Otra vez"}, format="json").status_code == 409
         assert (
-            client_api.post(f"{url}/attachments/", {"files": [pdf_factory()]}, format="multipart").status_code == 409
+            client_api.post(f"{url}/attachments/", {"files": [pdf_factory()]}, format="multipart").status_code
+            == 409
         )
         detail = client_api.get(f"{url}/").json()
         assert [e["status"] for e in detail["events"]] == ["NUEVO", "CERRADO"]
@@ -281,22 +325,38 @@ class TestServiceRequests:
         from apps.core.services import create_contract
 
         other_contract = create_contract(
-            contract_number="CONT-OTRO", client=other, property_address="X", start_date=date(2026, 1, 1),
+            contract_number="CONT-OTRO",
+            client=other,
+            property_address="X",
+            start_date=date(2026, 1, 1),
             end_date=date(2026, 12, 31),
         )
         foreign = ServiceRequest.objects.create(
-            client=other, contract=other_contract, case_type="a", service="b", subcategory="c", subject="s",
+            client=other,
+            contract=other_contract,
+            case_type="a",
+            service="b",
+            subcategory="c",
+            subject="s",
             description="d",
         )
         assert client_api.get(f"{BASE}/requests/{foreign.pk}/").status_code == 404
-        assert client_api.post(f"{BASE}/requests/{foreign.pk}/messages/", {"body": "x"}, format="json").status_code == 404
+        assert (
+            client_api.post(
+                f"{BASE}/requests/{foreign.pk}/messages/", {"body": "x"}, format="json"
+            ).status_code
+            == 404
+        )
 
     def test_cannot_use_contract_of_other_client(self, client_api, contract):
         other = Client.objects.create(name="Otro", identification_number="800.1-1", email="o@o.co")
         from apps.core.services import create_contract
 
         other_contract = create_contract(
-            contract_number="CONT-OTRO", client=other, property_address="X", start_date=date(2026, 1, 1),
+            contract_number="CONT-OTRO",
+            client=other,
+            property_address="X",
+            start_date=date(2026, 1, 1),
             end_date=date(2026, 12, 31),
         )
         assert self.create(client_api, other_contract).status_code == 404
@@ -304,6 +364,8 @@ class TestServiceRequests:
     def test_catalog(self, client_api):
         catalog = client_api.get(f"{BASE}/request-catalog/").json()
         assert catalog[0] == {
-            "id": 0, "case_type": "Administrativo", "service": "Contabilidad",
+            "id": 0,
+            "case_type": "Administrativo",
+            "service": "Contabilidad",
             "subcategory": "Información de estados de cuenta",
         }

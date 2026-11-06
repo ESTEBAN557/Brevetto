@@ -43,9 +43,11 @@ class Command(BaseCommand):
     help = "Publica documentos y requerimientos de ejemplo para recorrer Mi Portal."
 
     def handle(self, *args, **options):
-        contract = Contract.objects.select_related("client", "digital_record").filter(
-            contract_number=CONTRACT_NUMBER
-        ).first()
+        contract = (
+            Contract.objects.select_related("client", "digital_record")
+            .filter(contract_number=CONTRACT_NUMBER)
+            .first()
+        )
         if contract is None:
             raise CommandError("Falta el contrato demo. Ejecuta primero: python manage.py seed_demo_data")
 
@@ -64,7 +66,9 @@ class Command(BaseCommand):
                                   f"{contract.contract_number}_contrato_firmado.pdf", contract.start_date, "carta")  # fmt: skip
 
         requests = self._requests(contract)
-        self.stdout.write(self.style.SUCCESS(f"Documentos nuevos: {created} · requerimientos nuevos: {requests}"))
+        self.stdout.write(
+            self.style.SUCCESS(f"Documentos nuevos: {created} · requerimientos nuevos: {requests}")
+        )
         self.stdout.write(
             f"Ingresa en /login con tipo NIT, número {contract.client.identification_number} y el código "
             "que se muestra en la consola/log del backend (o en dev_code si CLIENT_OTP_DEV_ECHO está activo)."
@@ -86,7 +90,9 @@ class Command(BaseCommand):
         content = ContentFile(pdf, name=filename)
         filing_number = generate_filing_number()
         file_hash = compute_sha256(content)
-        stored_key = store_document_file(build_object_key(filing_number, filename, contract.digital_record), content)
+        stored_key = store_document_file(
+            build_object_key(filing_number, filename, contract.digital_record), content
+        )
         document = Document.objects.create(
             filing_number=filing_number,
             digital_record=contract.digital_record,
@@ -124,10 +130,15 @@ class Command(BaseCommand):
             solution="Muy amablemente, de acuerdo a su solicitud, adjuntamos los estados de cuenta. Quedamos atentos.",
         )
         ServiceRequestEvent.objects.create(
-            request=closed, status="NUEVO", actor=contract.client.name, note="El cliente creó el requerimiento."
+            request=closed,
+            status="NUEVO",
+            actor=contract.client.name,
+            note="El cliente creó el requerimiento.",
         )
         closed.change_status("ASIGNADO", actor="Sistema", note="Asignado automáticamente a Contabilidad.")
-        closed.change_status("RESUELTO", actor="Equipo de Contabilidad", note="Se envió la información solicitada.")
+        closed.change_status(
+            "RESUELTO", actor="Equipo de Contabilidad", note="Se envió la información solicitada."
+        )
         closed.change_status("CERRADO", actor="Equipo de Contabilidad", note="Resuelto satisfactoriamente.")
 
         open_request = ServiceRequest.objects.create(
@@ -141,7 +152,10 @@ class Command(BaseCommand):
             assigned_to="Equipo de Servicio al Cliente",
         )
         ServiceRequestEvent.objects.create(
-            request=open_request, status="NUEVO", actor=contract.client.name, note="El cliente creó el requerimiento."
+            request=open_request,
+            status="NUEVO",
+            actor=contract.client.name,
+            note="El cliente creó el requerimiento.",
         )
         open_request.change_status("ASIGNADO", actor="Sistema", note="Asignado a Servicio al Cliente.")
         open_request.change_status("EN_PROCESO", actor="Equipo de Servicio al Cliente")

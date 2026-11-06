@@ -97,9 +97,7 @@ def portal_document_types():
     """Tipos que un inquilino puede radicar desde el portal (excluye los internos)."""
     return DocumentType.objects.exclude(
         code__in=("CONTRATO", "ACTA_ENTREGA", "NOTIFICACION", "ESTADO_CUENTA", "CERTIFICADO_RETENCION")
-    ).order_by(
-        "category", "name"
-    )
+    ).order_by("category", "name")
 
 
 def expiring_documents(contract: Contract, within_days: int = 30):

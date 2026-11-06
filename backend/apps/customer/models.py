@@ -58,6 +58,9 @@ class LoginCode(TimeStampedModel):
         verbose_name_plural = "Códigos de Acceso"
         ordering = ["-created_at"]
 
+    def __str__(self) -> str:
+        return f"OTP {self.channel} ({self.client.identification_number})"
+
 
 class ServiceRequest(TimeStampedModel):
     """Requerimiento (solicitud, queja o sugerencia) del cliente. El radicado visible es `#id`."""
@@ -112,6 +115,9 @@ class ServiceRequestEvent(models.Model):
     class Meta:
         ordering = ["created_at", "id"]
 
+    def __str__(self) -> str:
+        return f"#{self.request_id} [{self.status}]"
+
 
 class ServiceRequestMessage(models.Model):
     class Author(models.TextChoices):
@@ -127,6 +133,9 @@ class ServiceRequestMessage(models.Model):
     class Meta:
         ordering = ["created_at", "id"]
 
+    def __str__(self) -> str:
+        return f"#{self.request_id} {self.author_name} ({self.author_type})"
+
 
 class ServiceRequestAttachment(models.Model):
     request = models.ForeignKey(ServiceRequest, on_delete=models.CASCADE, related_name="attachments")
@@ -139,3 +148,6 @@ class ServiceRequestAttachment(models.Model):
 
     class Meta:
         ordering = ["created_at", "id"]
+
+    def __str__(self) -> str:
+        return f"#{self.request_id} {self.original_filename}"
