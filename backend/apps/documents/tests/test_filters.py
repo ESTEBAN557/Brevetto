@@ -223,6 +223,8 @@ class TestContractFacetedSearch:
         assert api_client.get(CONTRACTS, {"client_identification": "900.123.456"}).json()["count"] == 1
 
     def test_end_date_range_and_expiring_contracts(self, api_client, dataset, contract):
+        contract.end_date = timezone.localdate() + timedelta(days=180)
+        contract.save()
         assert {
             c["contract_number"]
             for c in api_client.get(CONTRACTS, {"expiring_within_days": 60}).json()["results"]
