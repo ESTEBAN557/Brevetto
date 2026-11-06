@@ -5,6 +5,7 @@ La sesión del portal es un token firmado (HMAC con SECRET_KEY) y con vencimient
 sin estado en base de datos. Identifica al contrato validado y evita enumerar
 contratos: cualquier fallo de verificación responde con el mismo mensaje.
 """
+
 from __future__ import annotations
 
 import re
@@ -94,7 +95,9 @@ def mask_identification(value: str) -> str:
 
 def portal_document_types():
     """Tipos que un inquilino puede radicar desde el portal (excluye los internos)."""
-    return DocumentType.objects.exclude(code__in=("CONTRATO", "ACTA_ENTREGA", "NOTIFICACION")).order_by(
+    return DocumentType.objects.exclude(
+        code__in=("CONTRATO", "ACTA_ENTREGA", "NOTIFICACION", "ESTADO_CUENTA", "CERTIFICADO_RETENCION")
+    ).order_by(
         "category", "name"
     )
 

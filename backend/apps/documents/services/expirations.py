@@ -6,6 +6,7 @@ o vencen en los próximos N días, y deja constancia en AuditLog (acción
 ALERTA_VENCIMIENTO) una sola vez por etapa: warning (<= 30 d), critical (<= 7 d)
 y expired. La bitácora es el registro inmutable de que la alerta fue emitida.
 """
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -39,7 +40,9 @@ def days_to_expiration(expiration_date: date | None, today: date | None = None) 
     return (expiration_date - (today or timezone.localdate())).days
 
 
-def alert_stage(expiration_date: date | None, today: date | None = None, window_days: int | None = None) -> str | None:
+def alert_stage(
+    expiration_date: date | None, today: date | None = None, window_days: int | None = None
+) -> str | None:
     days = days_to_expiration(expiration_date, today)
     if days is None:
         return None
@@ -52,14 +55,14 @@ def alert_stage(expiration_date: date | None, today: date | None = None, window_
     return None
 
 
-def expiring_documents_queryset(days: int | None = None, include_expired: bool = True, today: date | None = None):
+def expiring_documents_queryset(
+    days: int | None = None, include_expired: bool = True, today: date | None = None
+):
     """Documentos con vigencia que vence dentro de `days` días (y los ya vencidos si se pide)."""
     today = today or timezone.localdate()
     limit = today + timedelta(days=days if days is not None else alert_window_days())
     queryset = (
-        Document.objects.select_related(
-            "document_type", "registered_by", "digital_record__contract__client"
-        )
+        Document.objects.select_related("document_type", "registered_by", "digital_record__contract__client")
         .filter(
             processing_status__in=ACTIVE_STATUSES,
             expiration_date__isnull=False,
@@ -73,6 +76,9 @@ def expiring_documents_queryset(days: int | None = None, include_expired: bool =
 
 
 def build_alert_details(document: Document, stage: str, today: date) -> dict:
+    # Invariante: solo se llama tras `alert_stage()` devolver una etapa no nula,
+    # lo que garantiza expiration_date is not None (documentado también para mypy).
+    assert document.expiration_date is not None
     contract = document.digital_record.contract if document.digital_record else None
     client = contract.client if contract else None
     return {
@@ -92,7 +98,14 @@ def check_expiring_documents(days: int | None = None, today: date | None = None)
     """Recorre los documentos por vencer y registra la alerta de cada etapa una sola vez."""
     today = today or timezone.localdate()
     window = days if days is not None else alert_window_days()
-    summary = {"checked": 0, "alerts_created": 0, STAGE_EXPIRED: 0, STAGE_CRITICAL: 0, STAGE_WARNING: 0, "as_of": today.isoformat()}
+    summary = {
+        "checked": 0,
+        "alerts_created": 0,
+        STAGE_EXPIRED: 0,
+        STAGE_CRITICAL: 0,
+        STAGE_WARNING: 0,
+        "as_of": today.isoformat(),
+    }
 
     for document in expiring_documents_queryset(window, include_expired=True, today=today):
         summary["checked"] += 1
@@ -108,7 +121,9 @@ def check_expiring_documents(days: int | None = None, today: date | None = None)
         ).exists()
         if already_alerted:
             continue
-        log_action(document, AuditLog.Action.EXPIRATION_ALERT, details=build_alert_details(document, stage, today))
+        log_action(
+            document, AuditLog.Action.EXPIRATION_ALERT, details=build_alert_details(document, stage, today)
+        )
         summary["alerts_created"] += 1
 
     return summary

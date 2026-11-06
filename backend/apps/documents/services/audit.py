@@ -1,7 +1,10 @@
 """Servicio de auditoría: única vía para insertar registros en la bitácora inmutable."""
+
 from __future__ import annotations
 
 from typing import Any
+
+from django.contrib.auth import get_user_model
 
 from apps.documents.models import AuditLog, Document
 
@@ -34,7 +37,8 @@ def log_action(
     performed_by = user
     if performed_by is None and request is not None:
         candidate = getattr(request, "user", None)
-        if candidate is not None and getattr(candidate, "is_authenticated", False):
+        # Las sesiones de cliente (Mi Portal) no son `User`: se identifican en `details`.
+        if isinstance(candidate, get_user_model()) and candidate.is_authenticated:
             performed_by = candidate
 
     return AuditLog.objects.create(

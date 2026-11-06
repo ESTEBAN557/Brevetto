@@ -1,4 +1,5 @@
 """Crea el bucket S3/MinIO configurado si aún no existe (idempotente)."""
+
 import boto3
 from botocore.exceptions import ClientError, EndpointConnectionError
 from django.conf import settings

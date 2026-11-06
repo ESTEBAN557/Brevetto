@@ -1,4 +1,7 @@
 """Pruebas de /api/v1/clients/, /api/v1/contracts/ y /api/v1/document-types/ (US-008)."""
+
+from datetime import UTC
+
 import pytest
 from django.core.files.storage import default_storage
 
@@ -129,16 +132,25 @@ class TestContractsApi:
         assert body["count"] == 1
         assert body["results"][0]["filing_number"] == document.filing_number
 
-        assert api_client.get(f"{CONTRACTS}{contract.pk}/documents/", {"document_type": "FACTURA"}).json()["count"] == 0
-        assert api_client.get(f"{CONTRACTS}{contract.pk}/documents/", {"category": "POLIZA"}).json()["count"] == 1
+        assert (
+            api_client.get(f"{CONTRACTS}{contract.pk}/documents/", {"document_type": "FACTURA"}).json()[
+                "count"
+            ]
+            == 0
+        )
+        assert (
+            api_client.get(f"{CONTRACTS}{contract.pk}/documents/", {"category": "POLIZA"}).json()["count"]
+            == 1
+        )
 
     def test_contract_audit_trail_aggregates_document_logs(self, api_client, contract, document, user):
-        from datetime import datetime, timedelta, timezone as dt_timezone
+        from datetime import datetime, timedelta
+        from datetime import timezone as dt_timezone
         from unittest.mock import patch
 
         document.digital_record = contract.digital_record
         document.save()
-        base = datetime(2026, 9, 20, 15, 0, 0, tzinfo=dt_timezone.utc)
+        base = datetime(2026, 9, 20, 15, 0, 0, tzinfo=UTC)
         with patch("django.utils.timezone.now", side_effect=[base, base + timedelta(seconds=1)]):
             log_action(document, AuditLog.Action.UPLOAD, user=user)
             log_action(document, AuditLog.Action.VIEW, user=user)

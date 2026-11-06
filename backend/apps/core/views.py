@@ -1,4 +1,5 @@
 """Endpoints REST del núcleo: /api/v1/clients/, /api/v1/contracts/, /api/v1/document-types/."""
+
 from __future__ import annotations
 
 from django.http import StreamingHttpResponse
@@ -59,12 +60,9 @@ class ContractViewSet(viewsets.ModelViewSet):
     def documents(self, request, pk=None):
         """Expediente digital: documentos del contrato, cronológicos y filtrables por tipo."""
         contract = self.get_object()
-        queryset = (
-            contract.digital_record.documents.select_related(
-                "document_type", "registered_by", "digital_record__contract__client"
-            )
-            .order_by("-created_at")
-        )
+        queryset = contract.digital_record.documents.select_related(
+            "document_type", "registered_by", "digital_record__contract__client"
+        ).order_by("-created_at")
         document_type = request.query_params.get("document_type")
         if document_type:
             queryset = queryset.filter(document_type__code=document_type)

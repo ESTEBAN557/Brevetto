@@ -1,4 +1,5 @@
 """Pruebas del endpoint de métricas ejecutivas GET /api/v1/metrics/summary/."""
+
 from datetime import timedelta
 
 import pytest
@@ -27,20 +28,53 @@ def make_doc(filing, status, channel=Document.SourceChannel.DIGITAL_INTERNAL, **
 def metrics_dataset(contract, document_type, user, settings):
     settings.MANUAL_MINUTES_PER_DOCUMENT = 8
     today = timezone.localdate()
-    auto_1 = make_doc("RAD-20260921-000901", Document.ProcessingStatus.PROCESSED, digital_record=contract.digital_record, document_type=document_type, ai_confidence_score=0.95, expiration_date=today + timedelta(days=5))
-    auto_2 = make_doc("RAD-20260921-000902", Document.ProcessingStatus.PROCESSED, Document.SourceChannel.EMAIL, digital_record=contract.digital_record, ai_confidence_score=0.9)
-    reviewed = make_doc("RAD-20260921-000903", Document.ProcessingStatus.PROCESSED, Document.SourceChannel.WEB_PORTAL, digital_record=contract.digital_record, ai_confidence_score=0.5)
-    pending = make_doc("RAD-20260921-000904", Document.ProcessingStatus.NEEDS_REVIEW, Document.SourceChannel.PHYSICAL, ai_confidence_score=0.4)
+    auto_1 = make_doc(
+        "RAD-20260921-000901",
+        Document.ProcessingStatus.PROCESSED,
+        digital_record=contract.digital_record,
+        document_type=document_type,
+        ai_confidence_score=0.95,
+        expiration_date=today + timedelta(days=5),
+    )
+    auto_2 = make_doc(
+        "RAD-20260921-000902",
+        Document.ProcessingStatus.PROCESSED,
+        Document.SourceChannel.EMAIL,
+        digital_record=contract.digital_record,
+        ai_confidence_score=0.9,
+    )
+    reviewed = make_doc(
+        "RAD-20260921-000903",
+        Document.ProcessingStatus.PROCESSED,
+        Document.SourceChannel.WEB_PORTAL,
+        digital_record=contract.digital_record,
+        ai_confidence_score=0.5,
+    )
+    pending = make_doc(
+        "RAD-20260921-000904",
+        Document.ProcessingStatus.NEEDS_REVIEW,
+        Document.SourceChannel.PHYSICAL,
+        ai_confidence_score=0.4,
+    )
 
     for doc in (auto_1, auto_2, reviewed, pending):
         log_action(doc, AuditLog.Action.UPLOAD, user=user)
     log_action(auto_1, AuditLog.Action.AI_CLASSIFY, details={"confidence": 0.95, "auto_associated": True})
     log_action(auto_2, AuditLog.Action.AI_CLASSIFY, details={"confidence": 0.9, "auto_associated": True})
-    log_action(reviewed, AuditLog.Action.AI_CLASSIFY, details={"confidence": 0.5, "needs_human_validation": True})
-    log_action(pending, AuditLog.Action.AI_CLASSIFY, details={"confidence": 0.4, "needs_human_validation": True})
+    log_action(
+        reviewed, AuditLog.Action.AI_CLASSIFY, details={"confidence": 0.5, "needs_human_validation": True}
+    )
+    log_action(
+        pending, AuditLog.Action.AI_CLASSIFY, details={"confidence": 0.4, "needs_human_validation": True}
+    )
     log_action(reviewed, AuditLog.Action.HUMAN_VALIDATE, user=user)
     # Un analista corrigió el tipo documental de un documento auto-clasificado: error de la IA.
-    log_action(auto_2, AuditLog.Action.METADATA_UPDATE, user=user, details={"changes": {"document_type": {"before": "FACTURA", "after": "CUENTA_COBRO"}}})
+    log_action(
+        auto_2,
+        AuditLog.Action.METADATA_UPDATE,
+        user=user,
+        details={"changes": {"document_type": {"before": "FACTURA", "after": "CUENTA_COBRO"}}},
+    )
     log_action(auto_1, AuditLog.Action.VIEW, user=user)
     return {"auto": [auto_1, auto_2], "reviewed": reviewed, "pending": pending}
 
@@ -50,7 +84,16 @@ class TestMetricsSummary:
     def test_summary_structure_and_document_counts(self, api_client, metrics_dataset):
         body = api_client.get(METRICS).json()
 
-        assert set(body) == {"generated_at", "period_days", "documents", "ai", "processing", "expirations", "contracts", "audit"}
+        assert set(body) == {
+            "generated_at",
+            "period_days",
+            "documents",
+            "ai",
+            "processing",
+            "expirations",
+            "contracts",
+            "audit",
+        }
         docs = body["documents"]
         assert docs["total"] == 4
         assert docs["processed"] == 3

@@ -164,6 +164,24 @@ class TestProcessDocumentContentTask:
         log = stored_document.audit_logs.get(action=AuditLog.Action.AI_CLASSIFY)
         assert log.details["reason"] == "ai_unavailable"
 
+    def test_invalid_api_key_sends_document_to_review_without_retrying(self, stored_document):
+        """401/403 de Gemini (clave revocada o sin permiso) no vale la pena reintentar: va directo a HITL."""
+        auth_error = AIExtractionError(
+            "Error consultando Gemini (gemini-3.5-flash): 401 UNAUTHENTICATED. "
+            "{'error': {'code': 401, 'status': 'UNAUTHENTICATED'}}"
+        )
+        with patch(EXTRACT_PATH, side_effect=auth_error) as extract:
+            result = process_document_content_task.apply(args=[str(stored_document.pk)])
+
+        assert result.successful(), result.result
+        extract.assert_called_once()  # sin reintentos: reintentar con la misma clave inválida no sirve
+        stored_document.refresh_from_db()
+        assert stored_document.processing_status == Document.ProcessingStatus.NEEDS_REVIEW
+        assert "401" in stored_document.ai_extracted_data["error"]
+        log = stored_document.audit_logs.get(action=AuditLog.Action.AI_CLASSIFY)
+        assert log.details["reason"] == "ai_auth_error"
+        assert result.result["status"] == "REQUIERE_REVISION"
+
     def test_transient_error_is_retried_and_then_succeeds(self, stored_document, contract):
         with patch(EXTRACT_PATH, side_effect=[AIExtractionError("timeout"), ai_payload()]) as extract:
             result = process_document_content_task.apply(args=[str(stored_document.pk)])

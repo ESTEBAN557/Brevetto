@@ -1,4 +1,5 @@
 """Pruebas del servicio de almacenamiento: claves de objeto y URLs prefirmadas."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -26,7 +27,9 @@ class TestObjectKeys:
 
     def test_filename_without_valid_chars_gets_fallback(self):
         assert build_object_key("RAD-20260920-000001", "¿¿??").endswith("RAD-20260920-000001_documento")
-        assert build_object_key("RAD-20260920-000001", "¿¿??.pdf").endswith("RAD-20260920-000001_documento.pdf")
+        assert build_object_key("RAD-20260920-000001", "¿¿??.pdf").endswith(
+            "RAD-20260920-000001_documento.pdf"
+        )
         assert build_object_key("RAD-20260920-000001", "").endswith("RAD-20260920-000001_documento")
         assert build_object_key("RAD-20260920-000001", "..").endswith("RAD-20260920-000001_documento")
 

@@ -4,6 +4,7 @@ Modelos de dominio del núcleo de Brevetto (apps.core).
 Contiene las entidades maestras: Cliente, Contrato, Expediente Digital y el
 catálogo de Tipos Documentales. Ver docs/03_DATABASE_MODELS.md.
 """
+
 import uuid
 
 from django.db import models
@@ -61,14 +62,10 @@ class Contract(TimeStampedModel):
 
     contract_number = models.CharField(max_length=100, unique=True, db_index=True)
     client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name="contracts")
-    property_address = models.CharField(
-        max_length=255, verbose_name="Dirección de la Bodega / Inmueble"
-    )
+    property_address = models.CharField(max_length=255, verbose_name="Dirección de la Bodega / Inmueble")
     start_date = models.DateField()
     end_date = models.DateField(db_index=True)
-    status = models.CharField(
-        max_length=30, choices=ContractStatus.choices, default=ContractStatus.ACTIVE
-    )
+    status = models.CharField(max_length=30, choices=ContractStatus.choices, default=ContractStatus.ACTIVE)
 
     class Meta:
         verbose_name = "Contrato"
@@ -93,12 +90,8 @@ class Contract(TimeStampedModel):
 class DigitalRecord(TimeStampedModel):
     STORAGE_PREFIX = "expedientes"
 
-    contract = models.OneToOneField(
-        Contract, on_delete=models.CASCADE, related_name="digital_record"
-    )
-    storage_path = models.CharField(
-        max_length=500, help_text="Prefijo en S3/MinIO para este expediente"
-    )
+    contract = models.OneToOneField(Contract, on_delete=models.CASCADE, related_name="digital_record")
+    storage_path = models.CharField(max_length=500, help_text="Prefijo en S3/MinIO para este expediente")
 
     class Meta:
         verbose_name = "Expediente Digital"
@@ -125,9 +118,7 @@ class DocumentType(TimeStampedModel):
 
     name = models.CharField(max_length=100, unique=True)
     code = models.CharField(max_length=50, unique=True)  # POLIZA_CUMPLIMIENTO, RUT, FACTURA
-    category = models.CharField(
-        max_length=30, choices=Category.choices, default=Category.LEGAL
-    )
+    category = models.CharField(max_length=30, choices=Category.choices, default=Category.LEGAL)
     requires_expiration = models.BooleanField(default=False)
     description = models.TextField(blank=True)
 

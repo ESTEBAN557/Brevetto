@@ -6,6 +6,7 @@ Modelos de radicación y documentos de Brevetto (apps.documents).
 - AuditLog: bitácora inmutable (append-only) de todas las acciones sobre documentos.
 Ver docs/03_DATABASE_MODELS.md.
 """
+
 import uuid
 
 from django.conf import settings
@@ -78,9 +79,7 @@ class Document(TimeStampedModel):
         blank=True,
         related_name="documents",
     )
-    document_type = models.ForeignKey(
-        DocumentType, on_delete=models.SET_NULL, null=True, blank=True
-    )
+    document_type = models.ForeignKey(DocumentType, on_delete=models.SET_NULL, null=True, blank=True)
 
     file_path = models.CharField(max_length=1000, help_text="URI del objeto en S3 / MinIO")
     original_filename = models.CharField(max_length=255)
@@ -185,9 +184,7 @@ class AuditLog(models.Model):
 
     def save(self, *args, **kwargs):
         if not self._state.adding:
-            raise AuditLogImmutableError(
-                "AuditLog es append-only: no se puede modificar un registro."
-            )
+            raise AuditLogImmutableError("AuditLog es append-only: no se puede modificar un registro.")
         return super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):

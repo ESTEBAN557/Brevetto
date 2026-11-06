@@ -1,0 +1,109 @@
+name: CI
+
+# Pipeline de integración continua (Calidad del Software, Sprint 1).
+# Valida los tres componentes del stack en cada Pull Request contra `main`:
+# frontend, backend/worker e infraestructura. Debe estar "green" antes de
+# permitir el merge (branch protection configurada en GitHub, ver wiki
+# "Continuous Integration" y "Branching Strategy").
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ------------------------------------------------------------- frontend --
+  frontend:
+    name: Frontend (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm run build
+      - name: Auditoría de dependencias (Security Analysis)
+        run: npm audit --audit-level=critical
+        continue-on-error: true # ver docs/CALIDAD_DEL_SOFTWARE.md: gap conocido (Next.js 14 -> 16 pendiente)
+
+  # -------------------------------------------------------- backend/worker --
+  backend:
+    name: Backend / Worker (Django, Celery)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: brevetto
+          POSTGRES_USER: brevetto
+          POSTGRES_PASSWORD: brevetto
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U brevetto -d brevetto"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DJANGO_SECRET_KEY: ci-test-key-not-for-production
+      POSTGRES_HOST: localhost
+      POSTGRES_DB: brevetto
+      POSTGRES_USER: brevetto
+      POSTGRES_PASSWORD: brevetto
+      REDIS_URL: redis://localhost:6379/0
+      AWS_S3_ENDPOINT_URL: http://localhost:9000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: backend/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Ruff — lint
+        run: ruff check .
+      - name: Ruff — formato
+        run: ruff format --check .
+      - name: mypy — tipado estático (progresivo, ver pyproject.toml)
+        run: mypy apps/documents/services apps/core/services.py
+        continue-on-error: true # adopción incremental; no bloquea aún el merge
+      - name: Django system check
+        run: python manage.py check
+      - name: Migraciones sin cambios pendientes
+        run: python manage.py makemigrations --check --dry-run
+      - name: pytest (suite completa, excluye pruebas de integración con Gemini)
+        run: pytest -m "not integration"
+      - name: Auditoría de dependencias (Security Analysis)
+        run: pip-audit -r requirements.txt --ignore-vuln PYSEC-2026-1845
+        continue-on-error: true # pytest 9 pendiente de evaluar (breaking change); riesgo bajo (solo dev/CI)
+
+  # ---------------------------------------------------------- infraestructura --
+  infra:
+    name: Infraestructura (Docker Compose)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar docker-compose.yml
+        run: docker compose config --quiet
+        env:
+          # Variables mínimas para que `compose config` resuelva sin un .env real.
+          POSTGRES_PASSWORD: ci
+          MINIO_ROOT_PASSWORD: ci-minio-pass

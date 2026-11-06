@@ -5,6 +5,7 @@ El modelo recibe el PDF/imagen y devuelve exclusivamente un JSON con el esquema
 definido en EXTRACTION_RESPONSE_SCHEMA. Cualquier desvío se normaliza aquí para
 que el resto del pipeline trabaje siempre con un diccionario predecible.
 """
+
 from __future__ import annotations
 
 import json
@@ -115,12 +116,19 @@ def parse_model_json(text: str) -> dict[str, Any]:
 
 
 TRANSIENT_MARKERS = ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "high demand", "overloaded")
+AUTH_ERROR_MARKERS = ("401", "UNAUTHENTICATED", "403", "PERMISSION_DENIED", "API_KEY_INVALID")
 
 
 def is_transient_model_error(exc: Exception) -> bool:
     """Saturación o cuota del modelo: vale la pena probar el modelo de respaldo de inmediato."""
     text = str(exc)
     return any(marker in text for marker in TRANSIENT_MARKERS)
+
+
+def is_auth_error(exc: Exception) -> bool:
+    """Clave inválida/revocada o sin permiso: reintentar no sirve de nada, hay que ir directo a HITL."""
+    text = str(exc)
+    return any(marker in text for marker in AUTH_ERROR_MARKERS)
 
 
 class GeminiExtractor:
@@ -130,7 +138,9 @@ class GeminiExtractor:
     modelo de respaldo (`GEMINI_FALLBACK_MODEL`) antes de delegar el reintento a Celery.
     """
 
-    def __init__(self, api_key: str | None = None, model: str | None = None, fallback_model: str | None = None):
+    def __init__(
+        self, api_key: str | None = None, model: str | None = None, fallback_model: str | None = None
+    ):
         self.api_key = api_key if api_key is not None else settings.GEMINI_API_KEY
         self.model = model or settings.GEMINI_MODEL
         self.fallback_model = (
@@ -165,7 +175,9 @@ class GeminiExtractor:
             try:
                 data = self._generate(fallback, file_bytes, mime_type)
             except AIExtractionError:
-                raise primary_error
+                # El respaldo también falló: se reporta el error del modelo principal,
+                # que es la causa raíz relevante para el usuario (no la del respaldo).
+                raise primary_error from None
             data["model_used"] = fallback
             return data
 

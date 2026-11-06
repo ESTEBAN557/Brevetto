@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Utilidad de línea de comandos de Django para Brevetto."""
+
 import os
 import sys
 
@@ -9,9 +10,7 @@ def main():
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
-        raise ImportError(
-            "No se pudo importar Django. ¿Está instalado y activo el entorno virtual?"
-        ) from exc
+        raise ImportError("No se pudo importar Django. ¿Está instalado y activo el entorno virtual?") from exc
     execute_from_command_line(sys.argv)
 
 

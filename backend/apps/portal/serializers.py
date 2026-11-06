@@ -1,4 +1,5 @@
 """Serializers del portal público (docs/04 §2)."""
+
 from __future__ import annotations
 
 from rest_framework import serializers

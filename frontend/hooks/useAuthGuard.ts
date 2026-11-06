@@ -15,7 +15,7 @@ export function useAuthGuard(): { ready: boolean; username: string | null } {
   useEffect(() => {
     const tokens = getTokens();
     if (!tokens) {
-      router.replace("/login");
+      router.replace("/login/empleados");
       return;
     }
     setState({ ready: true, username: tokens.username });

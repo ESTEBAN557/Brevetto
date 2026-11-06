@@ -1,4 +1,5 @@
 """Pruebas de los modelos Document y AuditLog (inmutabilidad append-only)."""
+
 import pytest
 from django.db import DatabaseError, connection, transaction
 

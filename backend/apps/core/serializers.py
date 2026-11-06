@@ -1,4 +1,5 @@
 """Serializers DRF del núcleo: clientes, contratos, expedientes y tipos documentales."""
+
 from __future__ import annotations
 
 from rest_framework import serializers
@@ -76,7 +77,14 @@ class ContractSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "client_detail", "digital_record", "status_label", "created_at", "updated_at")
+        read_only_fields = (
+            "id",
+            "client_detail",
+            "digital_record",
+            "status_label",
+            "created_at",
+            "updated_at",
+        )
 
     def validate(self, attrs):
         start = attrs.get("start_date", getattr(self.instance, "start_date", None))

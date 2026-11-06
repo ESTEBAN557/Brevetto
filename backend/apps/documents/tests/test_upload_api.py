@@ -1,4 +1,5 @@
 """Pruebas de POST /api/v1/documents/upload/ y /batch-upload/ (US-002, US-004, US-005, US-006, US-011)."""
+
 import hashlib
 import time
 
@@ -35,8 +36,13 @@ class TestDocumentUpload:
         assert response.status_code == 201, response.content
         body = response.json()
         assert set(body) == {
-            "id", "filing_number", "original_filename", "file_size_bytes",
-            "source_channel", "processing_status", "created_at",
+            "id",
+            "filing_number",
+            "original_filename",
+            "file_size_bytes",
+            "source_channel",
+            "processing_status",
+            "created_at",
         }
         assert FILING_NUMBER_PATTERN.match(body["filing_number"])
         assert body["processing_status"] == "RECIBIDO"
@@ -68,7 +74,11 @@ class TestDocumentUpload:
     def test_upload_with_contract_stores_file_in_record_prefix(self, api_client, pdf_factory, contract):
         response = api_client.post(
             UPLOAD_URL,
-            {"file": pdf_factory("poliza.pdf"), "source_channel": "FISICO_ESCANEADO", "contract_id": str(contract.pk)},
+            {
+                "file": pdf_factory("poliza.pdf"),
+                "source_channel": "FISICO_ESCANEADO",
+                "contract_id": str(contract.pk),
+            },
             format="multipart",
         )
 
@@ -184,7 +194,9 @@ class TestDocumentUpload:
         from django.core.files.uploadedfile import SimpleUploadedFile
 
         response = api_client.post(
-            UPLOAD_URL, {"file": SimpleUploadedFile("vacio.pdf", b"", content_type="application/pdf")}, format="multipart"
+            UPLOAD_URL,
+            {"file": SimpleUploadedFile("vacio.pdf", b"", content_type="application/pdf")},
+            format="multipart",
         )
         assert response.status_code == 400
 

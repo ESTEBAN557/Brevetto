@@ -5,12 +5,13 @@ Se omite salvo que exista GEMINI_API_KEY y BREVETTO_RUN_INTEGRATION=1:
 
     BREVETTO_RUN_INTEGRATION=1 POSTGRES_HOST=localhost .venv/Scripts/python.exe -m pytest -m integration
 """
+
 import os
 
 import pytest
 from django.conf import settings
 
-from apps.documents.services.ai_extraction import GeminiExtractor, AI_DOCUMENT_TYPES
+from apps.documents.services.ai_extraction import AI_DOCUMENT_TYPES, GeminiExtractor
 from scripts.make_sample_pdf import sample_pdf
 
 pytestmark = pytest.mark.integration

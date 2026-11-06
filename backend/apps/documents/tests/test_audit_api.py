@@ -1,5 +1,7 @@
 """Pruebas del módulo global de auditoría GET /api/v1/audit/ (US-023, US-024, US-025)."""
-from datetime import datetime, timezone as dt_timezone
+
+from datetime import UTC, datetime
+from datetime import timezone as dt_timezone
 from unittest.mock import patch
 
 import pytest
@@ -9,10 +11,10 @@ from apps.documents.services.audit import log_action
 
 AUDIT = "/api/v1/audit/"
 
-T1 = datetime(2026, 9, 20, 15, 0, tzinfo=dt_timezone.utc)   # 10:00 Bogotá, 20 sep
-T2 = datetime(2026, 9, 20, 16, 0, tzinfo=dt_timezone.utc)   # 11:00 Bogotá, 20 sep
-T3 = datetime(2026, 9, 21, 14, 0, tzinfo=dt_timezone.utc)   # 09:00 Bogotá, 21 sep
-T4 = datetime(2026, 9, 21, 20, 30, tzinfo=dt_timezone.utc)  # 15:30 Bogotá, 21 sep
+T1 = datetime(2026, 9, 20, 15, 0, tzinfo=UTC)  # 10:00 Bogotá, 20 sep
+T2 = datetime(2026, 9, 20, 16, 0, tzinfo=UTC)  # 11:00 Bogotá, 20 sep
+T3 = datetime(2026, 9, 21, 14, 0, tzinfo=UTC)  # 09:00 Bogotá, 21 sep
+T4 = datetime(2026, 9, 21, 20, 30, tzinfo=UTC)  # 15:30 Bogotá, 21 sep
 
 
 class FakeRequest:
@@ -34,13 +36,32 @@ def audit_dataset(document, contract, user):
     )
     entries = {}
     with patch("django.utils.timezone.now", return_value=T1):
-        entries["upload"] = log_action(document, AuditLog.Action.UPLOAD, request=FakeRequest("10.0.0.1", user), details={"filing_number": document.filing_number, "file_hash": "a" * 64})
+        entries["upload"] = log_action(
+            document,
+            AuditLog.Action.UPLOAD,
+            request=FakeRequest("10.0.0.1", user),
+            details={"filing_number": document.filing_number, "file_hash": "a" * 64},
+        )
     with patch("django.utils.timezone.now", return_value=T2):
-        entries["ai"] = log_action(document, AuditLog.Action.AI_CLASSIFY, details={"confidence": 0.42, "reason": "low_confidence", "needs_human_validation": True})
+        entries["ai"] = log_action(
+            document,
+            AuditLog.Action.AI_CLASSIFY,
+            details={"confidence": 0.42, "reason": "low_confidence", "needs_human_validation": True},
+        )
     with patch("django.utils.timezone.now", return_value=T3):
-        entries["view"] = log_action(orphan, AuditLog.Action.VIEW, request=FakeRequest("192.168.1.20", user), details={"storage_key": "x/orphan.pdf"})
+        entries["view"] = log_action(
+            orphan,
+            AuditLog.Action.VIEW,
+            request=FakeRequest("192.168.1.20", user),
+            details={"storage_key": "x/orphan.pdf"},
+        )
     with patch("django.utils.timezone.now", return_value=T4):
-        entries["download"] = log_action(document, AuditLog.Action.DOWNLOAD, request=FakeRequest("10.0.0.1", user), details={"export_type": "full_record_zip", "document_count": 3})
+        entries["download"] = log_action(
+            document,
+            AuditLog.Action.DOWNLOAD,
+            request=FakeRequest("10.0.0.1", user),
+            details={"export_type": "full_record_zip", "document_count": 3},
+        )
     return {"document": document, "orphan": orphan, **entries}
 
 
@@ -74,7 +95,12 @@ class TestAuditListing:
         assert response.json()["details"]["reason"] == "low_confidence"
 
     def test_ordering_can_be_reversed(self, api_client, audit_dataset):
-        assert actions_of(api_client.get(AUDIT, {"ordering": "timestamp"})) == ["CARGA", "CLASIFICACION_IA", "CONSULTA_VISUAL", "DESCARGA"]
+        assert actions_of(api_client.get(AUDIT, {"ordering": "timestamp"})) == [
+            "CARGA",
+            "CLASIFICACION_IA",
+            "CONSULTA_VISUAL",
+            "DESCARGA",
+        ]
 
     def test_requires_authentication(self, anonymous_client, audit_dataset):
         assert anonymous_client.get(AUDIT).status_code == 401
@@ -104,14 +130,28 @@ class TestAuditFilters:
         assert actions_of(api_client.get(AUDIT, {"ip_address": "192.168.1.20"})) == ["CONSULTA_VISUAL"]
 
     def test_filter_by_timestamp_range_with_dates(self, api_client, audit_dataset):
-        assert actions_of(api_client.get(AUDIT, {"timestamp_from": "2026-09-21"})) == ["DESCARGA", "CONSULTA_VISUAL"]
-        assert actions_of(api_client.get(AUDIT, {"timestamp_to": "2026-09-20"})) == ["CLASIFICACION_IA", "CARGA"]
-        assert api_client.get(AUDIT, {"timestamp_from": "2026-09-20", "timestamp_to": "2026-09-21"}).json()["count"] == 4
+        assert actions_of(api_client.get(AUDIT, {"timestamp_from": "2026-09-21"})) == [
+            "DESCARGA",
+            "CONSULTA_VISUAL",
+        ]
+        assert actions_of(api_client.get(AUDIT, {"timestamp_to": "2026-09-20"})) == [
+            "CLASIFICACION_IA",
+            "CARGA",
+        ]
+        assert (
+            api_client.get(AUDIT, {"timestamp_from": "2026-09-20", "timestamp_to": "2026-09-21"}).json()[
+                "count"
+            ]
+            == 4
+        )
         assert api_client.get(AUDIT, {"timestamp_from": "2026-09-22"}).json()["count"] == 0
 
     def test_filter_by_timestamp_range_with_datetimes(self, api_client, audit_dataset):
         # Entre las 10:30 y las 12:00 hora Bogotá del 20 de septiembre solo cae la clasificación IA.
-        response = api_client.get(AUDIT, {"timestamp_from": "2026-09-20T10:30:00-05:00", "timestamp_to": "2026-09-20T12:00:00-05:00"})
+        response = api_client.get(
+            AUDIT,
+            {"timestamp_from": "2026-09-20T10:30:00-05:00", "timestamp_to": "2026-09-20T12:00:00-05:00"},
+        )
         assert actions_of(response) == ["CLASIFICACION_IA"]
 
     def test_invalid_timestamp_returns_400(self, api_client, audit_dataset):
@@ -127,7 +167,15 @@ class TestAuditFilters:
         assert api_client.get(AUDIT, {"q": "analista"}).json()["count"] == 3
 
     def test_filters_combine(self, api_client, audit_dataset):
-        response = api_client.get(AUDIT, {"performed_by": "analista", "timestamp_from": "2026-09-21", "action": "DESCARGA,CONSULTA_VISUAL", "ip_address": "10.0.0.1"})
+        response = api_client.get(
+            AUDIT,
+            {
+                "performed_by": "analista",
+                "timestamp_from": "2026-09-21",
+                "action": "DESCARGA,CONSULTA_VISUAL",
+                "ip_address": "10.0.0.1",
+            },
+        )
         assert actions_of(response) == ["DESCARGA"]
 
     def test_actions_catalog_with_counts_respects_filters(self, api_client, audit_dataset):
@@ -136,7 +184,10 @@ class TestAuditFilters:
         assert catalog["ALERTA_VENCIMIENTO"]["count"] == 0
         assert catalog["DESCARGA"]["label"] == "Descarga de Archivo"
 
-        filtered = {item["code"]: item["count"] for item in api_client.get(f"{AUDIT}actions/", {"performed_by": "system"}).json()}
+        filtered = {
+            item["code"]: item["count"]
+            for item in api_client.get(f"{AUDIT}actions/", {"performed_by": "system"}).json()
+        }
         assert filtered["CLASIFICACION_IA"] == 1 and filtered["CARGA"] == 0
 
 

@@ -4,6 +4,7 @@ Endpoints del portal externo de inquilinos: /api/v1/portal/ (sin autenticación 
 - verify-contract: valida NIT/Cédula + número de contrato y emite un token temporal.
 - submit-document: radica un documento asociado al contrato del token y devuelve el comprobante.
 """
+
 from __future__ import annotations
 
 from django.db import transaction

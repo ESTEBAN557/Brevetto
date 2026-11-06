@@ -6,6 +6,7 @@ Uso:
     python scripts/make_sample_pdf.py salida.pdf [--kind poliza|factura|carta]
                                       [--contract CONT-2026-042] [--nit 900123456-1]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -109,8 +110,14 @@ def sample_pdf(
 ) -> bytes:
     lines = [
         line.format(
-            contract=contract, nit=nit, client=client, address=address,
-            issued=issued, start=start, end=end, policy=policy,
+            contract=contract,
+            nit=nit,
+            client=client,
+            address=address,
+            issued=issued,
+            start=start,
+            end=end,
+            policy=policy,
         )
         for line in TEMPLATES[kind]
     ]

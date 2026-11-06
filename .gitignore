@@ -47,3 +47,13 @@ celerybeat-schedule*
 # Mockups y presentaciones locales
 Mockup*.html
 Presentacion*.html
+presentacion*/
+[Pp]resentacion*/
+
+# Documentación externa, ejemplos y demos locales
+docs/
+Empresa-ejemplo/
+[Ee]mpresa*ejemplo*/
+*.pdf
+backend/*.pdf
+backend/scripts/create_felipe_data.py

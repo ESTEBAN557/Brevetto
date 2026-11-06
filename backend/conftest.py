@@ -1,4 +1,5 @@
 """Fixtures compartidas para la suite de pruebas de Brevetto (pytest-django)."""
+
 from datetime import date
 from unittest.mock import patch
 

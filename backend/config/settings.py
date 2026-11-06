@@ -4,6 +4,7 @@ Configuración de Django para Brevetto (Coltebienes S.A.).
 Todas las variables sensibles se leen del entorno (.env) mediante django-environ.
 Stack obligatorio: Django 5 + DRF + Celery + PostgreSQL 16 + Redis 7 + S3/MinIO.
 """
+
 from datetime import timedelta
 from pathlib import Path
 
@@ -46,6 +47,7 @@ INSTALLED_APPS = [
     "apps.core.apps.CoreConfig",
     "apps.documents.apps.DocumentsConfig",
     "apps.portal.apps.PortalConfig",
+    "apps.customer.apps.CustomerConfig",
 ]
 
 MIDDLEWARE = [
@@ -146,11 +148,20 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "portal_verify": env("PORTAL_VERIFY_THROTTLE", default="30/hour"),
         "portal_submit": env("PORTAL_SUBMIT_THROTTLE", default="60/hour"),
+        "client_auth": env("CLIENT_AUTH_THROTTLE", default="40/hour"),
     },
 }
 
 # --- Portal público de inquilinos -------------------------------------------
 PORTAL_SESSION_TTL_SECONDS = env.int("PORTAL_SESSION_TTL_SECONDS", default=1800)  # 30 minutos
+
+# --- Mi Portal (clientes) -----------------------------------------------------
+CLIENT_SESSION_TTL_SECONDS = env.int("CLIENT_SESSION_TTL_SECONDS", default=8 * 3600)
+# Devuelve el OTP en la respuesta de la API. Solo para desarrollo: no hay proveedor SMS integrado.
+CLIENT_OTP_DEV_ECHO = env.bool("CLIENT_OTP_DEV_ECHO", default=DEBUG)
+CLIENT_PORTAL_EXECUTIVE_NAME = env("CLIENT_PORTAL_EXECUTIVE_NAME", default="Equipo de Servicio al Cliente")
+CLIENT_PORTAL_EXECUTIVE_EMAIL = env("CLIENT_PORTAL_EXECUTIVE_EMAIL", default="")
+CLIENT_PORTAL_EXECUTIVE_WHATSAPP = env("CLIENT_PORTAL_EXECUTIVE_WHATSAPP", default="")
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),
@@ -158,7 +169,15 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
 }
 
+from corsheaders.defaults import default_headers
+
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-portal-token",
+]
+CORS_EXPOSE_HEADERS = [
+    "content-disposition",
+]
 
 # --- Celery (broker y backend de resultados en Redis) -----------------------
 REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")

@@ -1,4 +1,5 @@
 """Serializers DRF del módulo de radicación y documentos (docs/04_API_SPECIFICATION.md)."""
+
 from __future__ import annotations
 
 from django.conf import settings
@@ -24,11 +25,7 @@ def _validate_file(file):
 
 
 def _resolve_contract(contract_id):
-    contract = (
-        Contract.objects.select_related("digital_record", "client")
-        .filter(pk=contract_id)
-        .first()
-    )
+    contract = Contract.objects.select_related("digital_record", "client").filter(pk=contract_id).first()
     if contract is None:
         raise serializers.ValidationError({"contract_id": "El contrato indicado no existe."})
     return contract
@@ -227,7 +224,9 @@ class AuditLogSerializer(serializers.ModelSerializer):
     performed_by = serializers.CharField(source="performed_by.username", read_only=True, default=None)
     filing_number = serializers.CharField(source="document.filing_number", read_only=True)
     original_filename = serializers.CharField(source="document.original_filename", read_only=True)
-    contract_id = serializers.UUIDField(source="document.digital_record.contract_id", read_only=True, default=None)
+    contract_id = serializers.UUIDField(
+        source="document.digital_record.contract_id", read_only=True, default=None
+    )
     contract_number = serializers.CharField(
         source="document.digital_record.contract.contract_number", read_only=True, default=None
     )

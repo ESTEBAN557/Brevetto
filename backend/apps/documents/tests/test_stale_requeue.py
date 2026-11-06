@@ -1,4 +1,5 @@
 """Pruebas de la red de seguridad periódica que re-encola documentos estancados."""
+
 from datetime import timedelta
 
 import pytest
@@ -28,9 +29,9 @@ class TestRequeueStaleDocuments:
         settings.PROCESSING_STALE_AFTER_MINUTES = 15
         stale_processing = _make("RAD-20260920-000101", Document.ProcessingStatus.PROCESSING, 40)
         stale_received = _make("RAD-20260920-000102", Document.ProcessingStatus.RECEIVED, 20)
-        _make("RAD-20260920-000103", Document.ProcessingStatus.PROCESSING, 5)          # reciente
-        _make("RAD-20260920-000104", Document.ProcessingStatus.NEEDS_REVIEW, 120)      # estado final
-        _make("RAD-20260920-000105", Document.ProcessingStatus.FAILED, 120)            # estado final
+        _make("RAD-20260920-000103", Document.ProcessingStatus.PROCESSING, 5)  # reciente
+        _make("RAD-20260920-000104", Document.ProcessingStatus.NEEDS_REVIEW, 120)  # estado final
+        _make("RAD-20260920-000105", Document.ProcessingStatus.FAILED, 120)  # estado final
 
         result = requeue_stale_documents_task.apply().result
 

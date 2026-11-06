@@ -6,6 +6,7 @@ S3/MinIO directamente al ZIP y los bytes se entregan al cliente a medida que se
 generan, sin escribir en disco ni cargar el expediente completo en memoria.
 Incluye `manifest.json` con la relación de documentos y su hash SHA-256.
 """
+
 from __future__ import annotations
 
 import io
@@ -62,13 +63,14 @@ def zip_entry_path(document: Document) -> str:
 
 def export_documents(contract: Contract):
     """Documentos del expediente en orden cronológico (todos los estados)."""
-    return (
-        contract.digital_record.documents.select_related("document_type", "registered_by")
-        .order_by("created_at", "filing_number")
+    return contract.digital_record.documents.select_related("document_type", "registered_by").order_by(
+        "created_at", "filing_number"
     )
 
 
-def build_manifest(contract: Contract, documents: list[Document], *, generated_by: str | None, missing: list[str]) -> dict:
+def build_manifest(
+    contract: Contract, documents: list[Document], *, generated_by: str | None, missing: list[str]
+) -> dict:
     client = contract.client
     return {
         "system": "Brevetto — Coltebienes S.A.",
@@ -106,14 +108,18 @@ def build_manifest(contract: Contract, documents: list[Document], *, generated_b
                 "size_bytes": doc.file_size_bytes,
                 "mime_type": doc.mime_type,
                 "filed_at": timezone.localtime(doc.created_at).isoformat(),
-                "registered_by": doc.registered_by.username if doc.registered_by else doc.external_sender_name or None,
+                "registered_by": doc.registered_by.username
+                if doc.registered_by
+                else doc.external_sender_name or None,
             }
             for doc in documents
         ],
     }
 
 
-def iter_record_zip(contract: Contract, documents: list[Document], *, generated_by: str | None) -> Iterator[bytes]:
+def iter_record_zip(
+    contract: Contract, documents: list[Document], *, generated_by: str | None
+) -> Iterator[bytes]:
     """Generador de bytes del ZIP. Los archivos ausentes en el bucket se listan en el manifest."""
     buffer = _ChunkBuffer()
     missing: list[str] = []
@@ -122,12 +128,19 @@ def iter_record_zip(contract: Contract, documents: list[Document], *, generated_
     with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
         for document in documents:
             if not default_storage.exists(document.file_path):
-                logger.warning("Exportación %s: objeto ausente %s", contract.contract_number, document.file_path)
+                logger.warning(
+                    "Exportación %s: objeto ausente %s", contract.contract_number, document.file_path
+                )
                 missing.append(document.filing_number)
                 continue
-            info = zipfile.ZipInfo(zip_entry_path(document), date_time=timezone.localtime(document.created_at).timetuple()[:6])
+            info = zipfile.ZipInfo(
+                zip_entry_path(document), date_time=timezone.localtime(document.created_at).timetuple()[:6]
+            )
             info.compress_type = zipfile.ZIP_DEFLATED
-            with default_storage.open(document.file_path, "rb") as source, archive.open(info, mode="w") as target:
+            with (
+                default_storage.open(document.file_path, "rb") as source,
+                archive.open(info, mode="w") as target,
+            ):
                 for chunk in iter(lambda: source.read(CHUNK_SIZE), b""):
                     target.write(chunk)
                     yield buffer.drain()

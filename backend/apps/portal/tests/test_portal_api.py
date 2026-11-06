@@ -1,4 +1,5 @@
 """Pruebas del portal público de inquilinos: verificación de contrato y radicación externa."""
+
 from datetime import date, timedelta
 
 import pytest
@@ -31,7 +32,9 @@ def portal_token(anonymous_client, contract):
 
 @pytest.mark.django_db
 class TestVerifyContract:
-    def test_valid_credentials_return_session_and_context(self, anonymous_client, contract, document, document_type):
+    def test_valid_credentials_return_session_and_context(
+        self, anonymous_client, contract, document, document_type
+    ):
         document.digital_record = contract.digital_record
         document.document_type = document_type
         document.expiration_date = date.today() + timedelta(days=10)
@@ -57,14 +60,18 @@ class TestVerifyContract:
 
     def test_wrong_identification_is_rejected_with_generic_message(self, anonymous_client, contract):
         response = anonymous_client.post(
-            VERIFY, {"contract_number": "CONT-2026-042", "identification_number": "800000000-1"}, format="json"
+            VERIFY,
+            {"contract_number": "CONT-2026-042", "identification_number": "800000000-1"},
+            format="json",
         )
         assert response.status_code == 404
         assert "No encontramos" in response.json()["detail"]
 
     def test_unknown_contract_is_rejected(self, anonymous_client, contract):
         response = anonymous_client.post(
-            VERIFY, {"contract_number": "CONT-0000-000", "identification_number": "900123456-1"}, format="json"
+            VERIFY,
+            {"contract_number": "CONT-0000-000", "identification_number": "900123456-1"},
+            format="json",
         )
         assert response.status_code == 404
 
@@ -72,7 +79,9 @@ class TestVerifyContract:
         contract.status = Contract.ContractStatus.TERMINATED
         contract.save()
         response = anonymous_client.post(
-            VERIFY, {"contract_number": "CONT-2026-042", "identification_number": "900123456-1"}, format="json"
+            VERIFY,
+            {"contract_number": "CONT-2026-042", "identification_number": "900123456-1"},
+            format="json",
         )
         assert response.status_code == 404
 
@@ -85,7 +94,13 @@ class TestVerifyContract:
 @pytest.mark.django_db
 class TestSubmitDocument:
     def test_tenant_can_file_a_policy_and_gets_receipt(
-        self, anonymous_client, contract, portal_token, pdf_factory, mock_celery_delay, django_capture_on_commit_callbacks
+        self,
+        anonymous_client,
+        contract,
+        portal_token,
+        pdf_factory,
+        mock_celery_delay,
+        django_capture_on_commit_callbacks,
     ):
         with django_capture_on_commit_callbacks(execute=True):
             response = anonymous_client.post(
@@ -138,13 +153,20 @@ class TestSubmitDocument:
 
     def test_missing_or_invalid_token_is_unauthorized(self, anonymous_client, pdf_factory, contract):
         no_token = anonymous_client.post(
-            SUBMIT, {"file": pdf_factory(), "document_type_code": "FACTURA", "sender_name": "Ana"}, format="multipart"
+            SUBMIT,
+            {"file": pdf_factory(), "document_type_code": "FACTURA", "sender_name": "Ana"},
+            format="multipart",
         )
         assert no_token.status_code == 401
 
         bad_token = anonymous_client.post(
             SUBMIT,
-            {"portal_token": "abc:def", "file": pdf_factory(), "document_type_code": "FACTURA", "sender_name": "Ana"},
+            {
+                "portal_token": "abc:def",
+                "file": pdf_factory(),
+                "document_type_code": "FACTURA",
+                "sender_name": "Ana",
+            },
             format="multipart",
         )
         assert bad_token.status_code == 401
@@ -159,7 +181,12 @@ class TestSubmitDocument:
 
         response = anonymous_client.post(
             SUBMIT,
-            {"portal_token": tampered, "file": pdf_factory(), "document_type_code": "FACTURA", "sender_name": "Ana"},
+            {
+                "portal_token": tampered,
+                "file": pdf_factory(),
+                "document_type_code": "FACTURA",
+                "sender_name": "Ana",
+            },
             format="multipart",
         )
         assert response.status_code == 401
@@ -181,7 +208,12 @@ class TestSubmitDocument:
     def test_unknown_document_type_is_rejected(self, anonymous_client, portal_token, pdf_factory):
         response = anonymous_client.post(
             SUBMIT,
-            {"portal_token": portal_token, "file": pdf_factory(), "document_type_code": "INVENTADO", "sender_name": "Ana"},
+            {
+                "portal_token": portal_token,
+                "file": pdf_factory(),
+                "document_type_code": "INVENTADO",
+                "sender_name": "Ana",
+            },
             format="multipart",
         )
         assert response.status_code == 400

@@ -4,6 +4,7 @@ Servicio de ingesta y radicación de documentos (US-002, US-004, US-005, US-006)
 Flujo: validar archivo -> generar radicado atómico -> checksum SHA-256 -> subir a
 S3/MinIO -> crear Document (RECIBIDO) -> AuditLog CARGA -> encolar procesamiento IA.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -45,8 +46,7 @@ def validate_upload(file) -> str:
     extension = get_extension(getattr(file, "name", ""))
     if extension not in allowed_extensions:
         raise DocumentValidationError(
-            f"Extensión '{extension or '(ninguna)'}' no permitida. "
-            f"Use: {', '.join(allowed_extensions)}."
+            f"Extensión '{extension or '(ninguna)'}' no permitida. " f"Use: {', '.join(allowed_extensions)}."
         )
 
     size = getattr(file, "size", None) or 0
@@ -130,9 +130,7 @@ def register_document(
                 "mime_type": mime_type,
                 "source_channel": source_channel,
                 "storage_key": stored_key,
-                "contract_number": (
-                    digital_record.contract.contract_number if digital_record else None
-                ),
+                "contract_number": (digital_record.contract.contract_number if digital_record else None),
             },
         )
         transaction.on_commit(lambda: enqueue_processing(document.pk))

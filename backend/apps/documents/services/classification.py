@@ -5,6 +5,7 @@ Un documento solo se archiva automáticamente cuando la confianza del modelo es
 >= settings.AI_CONFIDENCE_THRESHOLD (0.85) Y el contrato se resolvió sin
 ambigüedad. En cualquier otro caso pasa a la bandeja REQUIERE_REVISION.
 """
+
 from __future__ import annotations
 
 import re
@@ -37,7 +38,7 @@ class ContractResolution:
 
     def __init__(self, contract: Contract | None, method: str, candidates: int = 0):
         self.contract = contract
-        self.method = method          # contract_number | client_identification | none | ambiguous
+        self.method = method  # contract_number | client_identification | none | ambiguous
         self.candidates = candidates
 
     @property
@@ -125,7 +126,7 @@ def apply_classification(document: Document, ai_data: dict[str, Any]) -> str:
 
     auto_classify = confidence >= threshold and resolution.contract is not None
 
-    if auto_classify:
+    if auto_classify and resolution.contract is not None:  # narrowing explícito (también para mypy)
         document.digital_record = resolution.contract.digital_record
         if document_type is not None:
             document.document_type = document_type
@@ -137,8 +138,10 @@ def apply_classification(document: Document, ai_data: dict[str, Any]) -> str:
         document.processing_status = Document.ProcessingStatus.NEEDS_REVIEW
         details["needs_human_validation"] = True
         details["reason"] = (
-            "low_confidence" if confidence < threshold
-            else "ambiguous_contract" if resolution.is_ambiguous
+            "low_confidence"
+            if confidence < threshold
+            else "ambiguous_contract"
+            if resolution.is_ambiguous
             else "contract_not_found"
         )
         if resolution.is_ambiguous:

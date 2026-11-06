@@ -4,6 +4,7 @@ Pruebas de US-001 — Generar Número de Radicado Único.
 Cubre formato `RAD-YYYYMMDD-XXXXXX`, consecutivo por fecha y unicidad bajo
 concurrencia real (10 hilos con conexiones independientes a PostgreSQL).
 """
+
 import threading
 from datetime import date
 
@@ -74,12 +75,12 @@ class TestFilingNumberValidation:
         [
             "",
             None,
-            "RAD-20260920-000000",   # el consecutivo empieza en 1
-            "RAD-20261340-000001",   # mes inválido
-            "RAD-2026092-000001",    # fecha corta
-            "RAD-20260920-00001",    # consecutivo corto
-            "rad-20260920-000001",   # prefijo en minúscula
-            "DOC-20260920-000001",   # prefijo incorrecto
+            "RAD-20260920-000000",  # el consecutivo empieza en 1
+            "RAD-20261340-000001",  # mes inválido
+            "RAD-2026092-000001",  # fecha corta
+            "RAD-20260920-00001",  # consecutivo corto
+            "rad-20260920-000001",  # prefijo en minúscula
+            "DOC-20260920-000001",  # prefijo incorrecto
             "RAD-20260920-000001 ",  # espacio final
         ],
     )

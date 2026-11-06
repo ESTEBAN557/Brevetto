@@ -41,7 +41,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   function logout() {
     clearTokens();
-    router.replace("/login");
+    router.replace("/login/empleados");
   }
 
   return (

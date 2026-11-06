@@ -1,4 +1,5 @@
 """Pruebas del sistema de alertas de vencimiento (Requerimiento Coltebienes #6)."""
+
 from datetime import date, timedelta
 
 import pytest
@@ -35,7 +36,14 @@ def make_doc(filing, expiration, status=Document.ProcessingStatus.PROCESSED, **k
 class TestAlertStage:
     @pytest.mark.parametrize(
         "delta_days, expected",
-        [(-1, STAGE_EXPIRED), (0, STAGE_CRITICAL), (7, STAGE_CRITICAL), (8, STAGE_WARNING), (30, STAGE_WARNING), (31, None)],
+        [
+            (-1, STAGE_EXPIRED),
+            (0, STAGE_CRITICAL),
+            (7, STAGE_CRITICAL),
+            (8, STAGE_WARNING),
+            (30, STAGE_WARNING),
+            (31, None),
+        ],
     )
     def test_stage_thresholds(self, delta_days, expected):
         assert alert_stage(TODAY + timedelta(days=delta_days), today=TODAY, window_days=30) == expected
@@ -49,12 +57,19 @@ class TestAlertStage:
 @pytest.mark.django_db
 class TestCheckExpiringDocuments:
     def test_creates_one_alert_per_document_and_stage(self, contract, document_type):
-        expired = make_doc("RAD-20260920-000301", TODAY - timedelta(days=3), digital_record=contract.digital_record, document_type=document_type)
+        expired = make_doc(
+            "RAD-20260920-000301",
+            TODAY - timedelta(days=3),
+            digital_record=contract.digital_record,
+            document_type=document_type,
+        )
         critical = make_doc("RAD-20260920-000302", TODAY + timedelta(days=5))
         warning = make_doc("RAD-20260920-000303", TODAY + timedelta(days=25))
-        make_doc("RAD-20260920-000304", TODAY + timedelta(days=90))                                   # fuera de ventana
-        make_doc("RAD-20260920-000305", TODAY - timedelta(days=1), status=Document.ProcessingStatus.FAILED)  # descartado
-        make_doc("RAD-20260920-000306", None)                                                          # sin vigencia
+        make_doc("RAD-20260920-000304", TODAY + timedelta(days=90))  # fuera de ventana
+        make_doc(
+            "RAD-20260920-000305", TODAY - timedelta(days=1), status=Document.ProcessingStatus.FAILED
+        )  # descartado
+        make_doc("RAD-20260920-000306", None)  # sin vigencia
 
         summary = check_expiring_documents(today=TODAY)
 
@@ -69,8 +84,13 @@ class TestCheckExpiringDocuments:
         assert alert.details["client_email"] == "contacto@logandina.co"
         assert alert.details["client_phone"] == "+57 604 123 4567"
         assert alert.details["document_type"] == "POLIZA_CUMPLIMIENTO"
-        assert critical.audit_logs.get(action=AuditLog.Action.EXPIRATION_ALERT).details["stage"] == STAGE_CRITICAL
-        assert warning.audit_logs.get(action=AuditLog.Action.EXPIRATION_ALERT).details["stage"] == STAGE_WARNING
+        assert (
+            critical.audit_logs.get(action=AuditLog.Action.EXPIRATION_ALERT).details["stage"]
+            == STAGE_CRITICAL
+        )
+        assert (
+            warning.audit_logs.get(action=AuditLog.Action.EXPIRATION_ALERT).details["stage"] == STAGE_WARNING
+        )
 
     def test_rerun_does_not_duplicate_alerts(self):
         make_doc("RAD-20260920-000310", TODAY + timedelta(days=10))
@@ -85,13 +105,15 @@ class TestCheckExpiringDocuments:
     def test_new_alert_when_stage_escalates(self):
         doc = make_doc("RAD-20260920-000311", TODAY + timedelta(days=10))
 
-        check_expiring_documents(today=TODAY)                       # warning
-        check_expiring_documents(today=TODAY + timedelta(days=5))   # critical (5 días restantes)
-        check_expiring_documents(today=TODAY + timedelta(days=6))   # sigue critical: sin nueva alerta
+        check_expiring_documents(today=TODAY)  # warning
+        check_expiring_documents(today=TODAY + timedelta(days=5))  # critical (5 días restantes)
+        check_expiring_documents(today=TODAY + timedelta(days=6))  # sigue critical: sin nueva alerta
         check_expiring_documents(today=TODAY + timedelta(days=11))  # expired
 
         stages = list(
-            doc.audit_logs.filter(action=AuditLog.Action.EXPIRATION_ALERT).order_by("timestamp").values_list("details__stage", flat=True)
+            doc.audit_logs.filter(action=AuditLog.Action.EXPIRATION_ALERT)
+            .order_by("timestamp")
+            .values_list("details__stage", flat=True)
         )
         assert sorted(stages) == sorted([STAGE_WARNING, STAGE_CRITICAL, STAGE_EXPIRED])
 
@@ -110,7 +132,11 @@ class TestCheckExpiringDocuments:
 
         numbers = list(expiring_documents_queryset(30, today=TODAY).values_list("filing_number", flat=True))
         assert numbers == ["RAD-20260920-000321", "RAD-20260920-000322", "RAD-20260920-000320"]
-        assert list(expiring_documents_queryset(30, include_expired=False, today=TODAY).values_list("filing_number", flat=True)) == [
+        assert list(
+            expiring_documents_queryset(30, include_expired=False, today=TODAY).values_list(
+                "filing_number", flat=True
+            )
+        ) == [
             "RAD-20260920-000322",
             "RAD-20260920-000320",
         ]
@@ -130,7 +156,12 @@ class TestCheckExpiringDocuments:
 class TestExpiringEndpoint:
     def test_lists_expiring_documents_with_stage_and_contact_data(self, api_client, contract, document_type):
         today = timezone.localdate()
-        make_doc("RAD-20260920-000401", today + timedelta(days=3), digital_record=contract.digital_record, document_type=document_type)
+        make_doc(
+            "RAD-20260920-000401",
+            today + timedelta(days=3),
+            digital_record=contract.digital_record,
+            document_type=document_type,
+        )
         make_doc("RAD-20260920-000402", today - timedelta(days=4), digital_record=contract.digital_record)
         make_doc("RAD-20260920-000403", today + timedelta(days=60))
 
@@ -155,7 +186,12 @@ class TestExpiringEndpoint:
         make_doc("RAD-20260920-000411", today + timedelta(days=50))
 
         assert api_client.get("/api/v1/documents/expiring/", {"days": 60}).json()["count"] == 2
-        assert api_client.get("/api/v1/documents/expiring/", {"days": 60, "include_expired": "false"}).json()["count"] == 1
+        assert (
+            api_client.get("/api/v1/documents/expiring/", {"days": 60, "include_expired": "false"}).json()[
+                "count"
+            ]
+            == 1
+        )
         assert api_client.get("/api/v1/documents/expiring/", {"days": "abc"}).status_code == 400
 
     def test_requires_authentication(self, anonymous_client):

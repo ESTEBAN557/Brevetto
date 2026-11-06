@@ -1,5 +1,6 @@
 """Pruebas de consulta, bandeja HITL, validación humana, metadatos (US-007) y URLs prefirmadas."""
-from datetime import date
+
+from datetime import UTC, date
 
 import pytest
 
@@ -176,7 +177,10 @@ class TestHumanValidation:
     def test_validate_rejects_unknown_contract_or_type(self, api_client, review_document, document_type):
         response = api_client.post(
             _detail(review_document, "validate/"),
-            {"contract_id": "9a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d", "document_type_id": str(document_type.pk)},
+            {
+                "contract_id": "9a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
+                "document_type_id": str(document_type.pk),
+            },
             format="json",
         )
         assert response.status_code == 400
@@ -337,10 +341,11 @@ class TestPresignedUrls:
 @pytest.mark.django_db
 class TestAuditTrail:
     def test_audit_trail_lists_actions_newest_first(self, api_client, document, user):
-        from datetime import datetime, timedelta, timezone as dt_timezone
+        from datetime import datetime, timedelta
+        from datetime import timezone as dt_timezone
         from unittest.mock import patch
 
-        base = datetime(2026, 9, 20, 15, 0, 0, tzinfo=dt_timezone.utc)
+        base = datetime(2026, 9, 20, 15, 0, 0, tzinfo=UTC)
         # Timestamps explícitos: el reloj de Windows puede repetir el mismo microsegundo.
         with patch("django.utils.timezone.now", side_effect=[base + timedelta(seconds=i) for i in range(3)]):
             log_action(document, AuditLog.Action.UPLOAD, user=user, details={"step": 1})

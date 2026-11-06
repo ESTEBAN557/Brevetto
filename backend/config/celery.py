@@ -2,6 +2,7 @@
 
 Arranque del worker: `celery -A config worker -l info`
 """
+
 import os
 
 from celery import Celery

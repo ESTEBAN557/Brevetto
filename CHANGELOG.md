@@ -7,6 +7,34 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.5.0] - Mi Portal (portal de clientes) y nuevo acceso - 2026-10-20
+
+### ✨ Añadido (Added)
+- **Pantallas de acceso** (`/login`, `/login/clientes`, `/login/empleados`) con la estructura de `Empresa-ejemplo/login` y el estilo Coltebienes: ingreso rápido con documento + código OTP (SMS o correo), ingreso de cliente con correo/contraseña (la contraseña se crea opcionalmente tras el primer ingreso) y acceso de empleados (acepta correo o usuario).
+- **Mi Portal** (`/portal`, `/portal/documentos/{estados-de-cuenta,facturas,certificados,contratos}`, `/portal/radicar`, `/portal/requerimientos[/id/{chat,adjuntos}]`) siguiendo `Empresa-ejemplo/Portal`: barra lateral contraíble, selector de contrato, notificaciones de vencimientos, requerimientos con línea de estados, chat, seguimiento y adjuntos.
+- Backend `apps/customer`: `ClientAccount`, `LoginCode` (OTP con hash, 10 min, 5 intentos, enfriamiento 45 s), `ServiceRequest` (+ eventos, mensajes, adjuntos), API `/api/v1/client-portal/*`, administración en Django Admin y comando `seed_client_portal_demo`.
+- Sesión de cliente con token firmado (`Authorization: Client …`) separada del JWT del personal: no alcanza ningún endpoint administrativo (probado). Descargas de clientes auditadas en `AuditLog` (sin `performed_by`, con `details.client_account`).
+- Tipos documentales `ESTADO_CUENTA` y `CERTIFICADO_RETENCION` (migración `core.0003`).
+
+### ⚠️ Notas
+- No hay proveedor SMS integrado: con `CLIENT_OTP_DEV_ECHO` (por defecto = `DJANGO_DEBUG`) el código se devuelve en la respuesta y se muestra en la pantalla; en producción debe desactivarse y configurarse un proveedor.
+- Sin datos de canon/valores: las pantallas de referencia que los muestran se adaptaron a los datos que Brevetto sí tiene (radicado, fechas, expediente).
+
+## [0.4.2] - Entrega Sprint 1 (documentación, calidad y preparación de demo) - 2026-09-23
+
+### ✨ Añadido (Added)
+- Documentación de entrega del Sprint 1: `docs/07_CALIDAD_DEL_SOFTWARE.md`, `docs/08_SPRINT_1_ENTREGA.md`, `docs/09_PROPUESTA_ORGANIZACION_WIKI.md`, `docs/test-results/SPRINT_1_PYTEST_EXECUTION.md`, `docs/presentacion_sprint1.html` (presentación autocontenida) y `docs/10_GUIA_DEMO_EN_VIVO.md`.
+- `backend/pyproject.toml` (Ruff + mypy), `backend/requirements-dev.txt`, `frontend/.eslintrc.json`, `.github/workflows/ci.yml`: pipeline de calidad e integración continua real (antes solo estaba documentado).
+- Documentos de demostración en `docs/demo-assets/` para probar el pipeline de IA en vivo.
+
+### 🔒 Corregido (Fixed)
+- `djangorestframework` actualizado a `>=3.17.2,<3.18` (corrige PYSEC-2026-3827/3828, hallado con `pip-audit`).
+- `apps/documents/tasks.py`: un error de autenticación de Gemini (API key inválida/revocada, HTTP 401/403) ya no agota 3 reintentos (hasta 3 minutos) para terminar en `FALLIDO`; ahora se detecta como no-reintentable y el documento pasa de inmediato a `REQUIERE_REVISION`, igual que cuando no hay API key configurada.
+- `apps/documents/tests/test_filters.py::test_end_date_range_and_expiring_contracts`: corregido un caso de prueba que comparaba una fecha relativa a "hoy" contra un dato de prueba con fecha fija, y dejaba de cumplirse con el paso de los días.
+- Formateo de código aplicado con `ruff format` en 51 archivos del backend (cambio mecánico, sin efecto funcional).
+
+---
+
 ## [0.4.1] - Rediseño Visual Corporativo Coltebienes ("Stitch Look") - 2026-09-21
 
 ### 🎨 Cambiado (Changed)

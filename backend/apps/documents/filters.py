@@ -18,6 +18,7 @@ Parámetros de consulta soportados por GET /api/v1/documents/:
   min_confidence / max_confidence
   registered_by              username
 """
+
 from __future__ import annotations
 
 import re
@@ -225,7 +226,9 @@ class AuditLogFilter(filters.FilterSet):
         try:
             return queryset.filter(timestamp__gte=_parse_boundary(value, end_of_day=False))
         except ValueError as exc:
-            raise ValidationError({"timestamp_from": "Use una fecha ISO (YYYY-MM-DD) o fecha-hora ISO."}) from exc
+            raise ValidationError(
+                {"timestamp_from": "Use una fecha ISO (YYYY-MM-DD) o fecha-hora ISO."}
+            ) from exc
 
     def filter_timestamp_to(self, queryset, name, value):
         from rest_framework.exceptions import ValidationError
@@ -233,4 +236,6 @@ class AuditLogFilter(filters.FilterSet):
         try:
             return queryset.filter(timestamp__lte=_parse_boundary(value, end_of_day=True))
         except ValueError as exc:
-            raise ValidationError({"timestamp_to": "Use una fecha ISO (YYYY-MM-DD) o fecha-hora ISO."}) from exc
+            raise ValidationError(
+                {"timestamp_to": "Use una fecha ISO (YYYY-MM-DD) o fecha-hora ISO."}
+            ) from exc

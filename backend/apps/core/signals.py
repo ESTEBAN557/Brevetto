@@ -1,4 +1,5 @@
 """Señales del núcleo: garantizan que todo contrato tenga su expediente digital (US-008)."""
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 

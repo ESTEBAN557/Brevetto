@@ -4,6 +4,7 @@ Servicio de almacenamiento de objetos (S3 / MinIO) vía django-storages.
 Toda interacción con el bucket pasa por `default_storage`, configurado en
 settings.STORAGES. En pruebas se sustituye por InMemoryStorage.
 """
+
 from __future__ import annotations
 
 import json

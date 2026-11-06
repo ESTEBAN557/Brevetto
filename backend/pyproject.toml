@@ -1,0 +1,64 @@
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = [".venv", "migrations"]
+
+[tool.ruff.lint]
+# Reglas activas (modo recomendado por Ruff, sin llegar al set "ALL" para no
+# generar ruido en un proyecto que recién adopta análisis estático).
+select = [
+    "E",   # pycodestyle (errores)
+    "W",   # pycodestyle (warnings)
+    "F",   # Pyflakes
+    "I",   # isort (orden de imports)
+    "B",   # flake8-bugbear (errores comunes de diseño)
+    "C4",  # flake8-comprehensions
+    "DJ",  # flake8-django
+    "UP",  # pyupgrade (sintaxis moderna de Python)
+]
+ignore = [
+    "E501",  # el line-length ya lo controla el formateador; evita duplicar el aviso
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/migrations/*.py" = ["E", "F401"]
+"**/tests/test_*.py" = ["F401", "F811"]  # fixtures de pytest se re-declaran/usan implícitamente
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config", "scripts"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+# Adopción progresiva (ver docs/wiki "Static Code Analysis"): se exige tipado
+# estricto solo en los módulos de servicios de negocio, que son los que más
+# valor reciben de la verificación de tipos; el resto se revisa en modo laxo
+# hasta que el proyecto añada anotaciones de forma incremental.
+ignore_missing_imports = true
+exclude = ["migrations/", "\\.venv/"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[[tool.mypy.overrides]]
+module = "apps.documents.services.*"
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "apps.core.services"
+disallow_untyped_defs = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["tests.py", "test_*.py"]
+testpaths = ["apps"]
+addopts = "-ra --strict-markers"
+markers = [
+    "concurrency: pruebas que abren múltiples conexiones a PostgreSQL en paralelo",
+    "integration: pruebas que llaman servicios externos reales (Gemini); requieren BREVETTO_RUN_INTEGRATION=1",
+]

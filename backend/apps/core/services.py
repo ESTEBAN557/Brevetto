@@ -1,4 +1,5 @@
 """Servicios de dominio del núcleo: alta de contratos con expediente digital (US-008)."""
+
 from __future__ import annotations
 
 import logging
@@ -31,7 +32,8 @@ def provision_record_storage(record: DigitalRecord) -> str | None:
         return ensure_record_prefix(record)
     except Exception:  # pragma: no cover - depende de la disponibilidad del bucket
         logger.warning(
-            "No se pudo provisionar el expediente %s en el storage", record.storage_path,
+            "No se pudo provisionar el expediente %s en el storage",
+            record.storage_path,
             exc_info=True,
         )
         return None

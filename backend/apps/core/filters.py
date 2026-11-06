@@ -13,6 +13,7 @@ GET /api/v1/contracts/ admite:
   expired                true => contratos con fecha de fin pasada
   has_documents          true/false
 """
+
 from __future__ import annotations
 
 from datetime import timedelta

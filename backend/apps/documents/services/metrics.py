@@ -4,6 +4,7 @@ Métricas ejecutivas de gestión documental (KPIs de Coltebienes).
 Todo se calcula con agregaciones sobre PostgreSQL; el único recorrido en Python
 es el cálculo del tiempo promedio de clasificación sobre una muestra reciente.
 """
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -34,7 +35,11 @@ def manual_minutes_per_document() -> int:
 
 
 def _status_breakdown() -> list[dict]:
-    counts = dict(Document.objects.values_list("processing_status").annotate(total=Count("id")).values_list("processing_status", "total"))
+    counts = dict(
+        Document.objects.values_list("processing_status")
+        .annotate(total=Count("id"))
+        .values_list("processing_status", "total")
+    )
     return [
         {
             "code": status.value,
@@ -47,7 +52,11 @@ def _status_breakdown() -> list[dict]:
 
 
 def _channel_breakdown() -> list[dict]:
-    counts = dict(Document.objects.values_list("source_channel").annotate(total=Count("id")).values_list("source_channel", "total"))
+    counts = dict(
+        Document.objects.values_list("source_channel")
+        .annotate(total=Count("id"))
+        .values_list("source_channel", "total")
+    )
     return [
         {"code": channel.value, "label": channel.label, "count": counts.get(channel.value, 0)}
         for channel in Document.SourceChannel
@@ -76,21 +85,29 @@ def _ai_metrics() -> dict:
         .distinct()
     )
     human_validated_ids = set(
-        AuditLog.objects.filter(action=AuditLog.Action.HUMAN_VALIDATE).values_list("document_id", flat=True).distinct()
+        AuditLog.objects.filter(action=AuditLog.Action.HUMAN_VALIDATE)
+        .values_list("document_id", flat=True)
+        .distinct()
     )
     # Auto-clasificados a los que un analista luego cambió el tipo documental: corrección de la IA.
-    corrected_ids = set(
-        AuditLog.objects.filter(
-            action=AuditLog.Action.METADATA_UPDATE,
-            document_id__in=auto_ids,
-            details__changes__has_key="document_type",
-        ).values_list("document_id", flat=True)
-    ) if auto_ids else set()
+    corrected_ids = (
+        set(
+            AuditLog.objects.filter(
+                action=AuditLog.Action.METADATA_UPDATE,
+                document_id__in=auto_ids,
+                details__changes__has_key="document_type",
+            ).values_list("document_id", flat=True)
+        )
+        if auto_ids
+        else set()
+    )
 
     analyzed = len(auto_ids | review_ids)
     auto = len(auto_ids)
     corrected = len(corrected_ids)
-    confidence = Document.objects.filter(ai_confidence_score__isnull=False).aggregate(avg=Avg("ai_confidence_score"))["avg"]
+    confidence = Document.objects.filter(ai_confidence_score__isnull=False).aggregate(
+        avg=Avg("ai_confidence_score")
+    )["avg"]
 
     return {
         "documents_analyzed": analyzed,
@@ -127,7 +144,9 @@ def _expiration_metrics() -> dict:
     window = alert_window_days()
     queryset = expiring_documents_queryset(window, include_expired=True, today=today)
     expired = queryset.filter(expiration_date__lt=today).count()
-    critical = queryset.filter(expiration_date__gte=today, expiration_date__lte=today + timedelta(days=7)).count()
+    critical = queryset.filter(
+        expiration_date__gte=today, expiration_date__lte=today + timedelta(days=7)
+    ).count()
     total = queryset.count()
     return {
         "window_days": window,
@@ -157,7 +176,9 @@ def summary(period_days: int = 30) -> dict:
             "pending_review": pending_review,
             "filed_in_period": Document.objects.filter(created_at__gte=since).count(),
             "filed_last_24h": Document.objects.filter(created_at__gte=now - timedelta(hours=24)).count(),
-            "portal_submissions": Document.objects.filter(source_channel=Document.SourceChannel.WEB_PORTAL).count(),
+            "portal_submissions": Document.objects.filter(
+                source_channel=Document.SourceChannel.WEB_PORTAL
+            ).count(),
             "by_status": _status_breakdown(),
             "by_channel": _channel_breakdown(),
             "by_category": _category_breakdown(),
@@ -173,7 +194,9 @@ def summary(period_days: int = 30) -> dict:
         "contracts": {
             "total": Contract.objects.count(),
             "active": Contract.objects.filter(status=Contract.ContractStatus.ACTIVE).count(),
-            "with_documents": Contract.objects.filter(digital_record__documents__isnull=False).distinct().count(),
+            "with_documents": Contract.objects.filter(digital_record__documents__isnull=False)
+            .distinct()
+            .count(),
         },
         "audit": {
             "total_events": AuditLog.objects.count(),

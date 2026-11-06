@@ -4,6 +4,7 @@ Endpoints REST de radicación y documentos: /api/v1/documents/ (docs/04_API_SPEC
 Las respuestas HTTP se mantienen bajo 2 s: la única operación pesada dentro del
 request es la subida al bucket; el análisis con IA corre en Celery.
 """
+
 from __future__ import annotations
 
 from django.db import transaction
@@ -15,13 +16,10 @@ from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-
 from rest_framework.views import APIView
 
 from apps.documents.filters import AuditLogFilter, DocumentFilter
 from apps.documents.models import AuditLog, Document
-from apps.documents.services import metrics as metrics_service
-from apps.documents.services.expirations import alert_window_days, expiring_documents_queryset
 from apps.documents.serializers import (
     AuditLogSerializer,
     DocumentBatchUploadSerializer,
@@ -32,7 +30,9 @@ from apps.documents.serializers import (
     DocumentValidateSerializer,
     PresignedUrlSerializer,
 )
+from apps.documents.services import metrics as metrics_service
 from apps.documents.services.audit import log_action
+from apps.documents.services.expirations import alert_window_days, expiring_documents_queryset
 from apps.documents.services.ingestion import register_document, register_documents_batch
 from apps.documents.services.storage import get_presigned_url, presigned_url_ttl_seconds
 
@@ -40,14 +40,11 @@ from apps.documents.services.storage import get_presigned_url, presigned_url_ttl
 class DocumentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
     """Consulta de documentos radicados y acciones de radicación / validación."""
 
-    queryset = (
-        Document.objects.select_related(
-            "document_type",
-            "registered_by",
-            "digital_record__contract__client",
-        )
-        .all()
-    )
+    queryset = Document.objects.select_related(
+        "document_type",
+        "registered_by",
+        "digital_record__contract__client",
+    ).all()
     serializer_class = DocumentSerializer
     permission_classes = (IsAuthenticated,)
     filter_backends = (DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter)
@@ -60,7 +57,13 @@ class DocumentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets
         "digital_record__contract__client__name",
         "digital_record__contract__client__identification_number",
     )
-    ordering_fields = ("created_at", "expiration_date", "document_date", "ai_confidence_score", "filing_number")
+    ordering_fields = (
+        "created_at",
+        "expiration_date",
+        "document_date",
+        "ai_confidence_score",
+        "filing_number",
+    )
     ordering = ("-created_at",)
 
     # ----------------------------------------------------------- vencimientos --
@@ -72,7 +75,11 @@ class DocumentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets
         except ValueError:
             return Response({"days": "Debe ser un entero."}, status=status.HTTP_400_BAD_REQUEST)
         days = max(0, min(days, 365))
-        include_expired = str(request.query_params.get("include_expired", "true")).lower() not in ("false", "0", "no")
+        include_expired = str(request.query_params.get("include_expired", "true")).lower() not in (
+            "false",
+            "0",
+            "no",
+        )
         try:
             limit = max(1, min(int(request.query_params.get("limit", 50)), 200))
         except ValueError:
@@ -234,7 +241,9 @@ class DocumentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets
         with transaction.atomic():
             document = serializer.save()
             current = snapshot(document)
-            changed = {k: {"before": previous[k], "after": current[k]} for k in current if previous[k] != current[k]}
+            changed = {
+                k: {"before": previous[k], "after": current[k]} for k in current if previous[k] != current[k]
+            }
             log_action(
                 document,
                 AuditLog.Action.METADATA_UPDATE,

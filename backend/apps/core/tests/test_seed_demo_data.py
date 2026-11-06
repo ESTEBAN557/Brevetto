@@ -1,4 +1,5 @@
 """Pruebas del comando `seed_demo_data` (datos de demostración idempotentes)."""
+
 from io import StringIO
 
 import pytest
@@ -46,7 +47,11 @@ class TestSeedDemoData:
 
         processed = Document.objects.filter(processing_status=Document.ProcessingStatus.PROCESSED)
         assert all(doc.digital_record is not None and doc.document_type is not None for doc in processed)
-        assert set(processed.values_list("document_type__code", flat=True)) == {"POLIZA_CUMPLIMIENTO", "FACTURA", "CAMARA_COMERCIO"}
+        assert set(processed.values_list("document_type__code", flat=True)) == {
+            "POLIZA_CUMPLIMIENTO",
+            "FACTURA",
+            "CAMARA_COMERCIO",
+        }
 
         review = Document.objects.filter(processing_status=Document.ProcessingStatus.NEEDS_REVIEW)
         assert review.count() == 2

@@ -1,4 +1,5 @@
 """Pruebas de los modelos maestros: Client, Contract, DigitalRecord y DocumentType."""
+
 from datetime import date
 
 import pytest
@@ -17,9 +18,7 @@ class TestClient:
 
     def test_identification_number_is_unique(self, tenant):
         with pytest.raises(IntegrityError):
-            Client.objects.create(
-                name="Otro", identification_number="900123456-1", email="otro@x.co"
-            )
+            Client.objects.create(name="Otro", identification_number="900123456-1", email="otro@x.co")
 
     def test_client_with_contracts_cannot_be_deleted(self, contract):
         with pytest.raises(ProtectedError):
@@ -101,4 +100,11 @@ class TestDocumentType:
 
     def test_catalog_is_seeded_by_migration(self, db):
         codes = set(DocumentType.objects.values_list("code", flat=True))
-        assert {"POLIZA_CUMPLIMIENTO", "FACTURA", "SERVICIO_PUBLICO", "CARTA_SOLICITUD", "ACTA_ENTREGA", "OTRO"} <= codes
+        assert {
+            "POLIZA_CUMPLIMIENTO",
+            "FACTURA",
+            "SERVICIO_PUBLICO",
+            "CARTA_SOLICITUD",
+            "ACTA_ENTREGA",
+            "OTRO",
+        } <= codes

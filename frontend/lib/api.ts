@@ -49,7 +49,7 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
   query?: Record<string, string | number | boolean | undefined | null>;
 }
 
-function buildUrl(path: string, query?: RequestOptions["query"]): string {
+export function buildUrl(path: string, query?: RequestOptions["query"]): string {
   const url = new URL(path.startsWith("http") ? path : `${API_URL}${path}`);
   if (query) {
     for (const [key, value] of Object.entries(query)) {
@@ -99,7 +99,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     if (refreshed) {
       response = await doRequest(refreshed);
     } else if (typeof window !== "undefined") {
-      window.location.assign("/login");
+      window.location.assign("/login/empleados");
     }
   }
 
@@ -139,7 +139,7 @@ export function triggerBrowserDownload(blob: Blob, filename: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-function safeJson(text: string): unknown {
+export function safeJson(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {
