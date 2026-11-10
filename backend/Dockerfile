@@ -18,7 +18,9 @@ RUN pip install --upgrade pip && pip install -r /app/requirements.txt
 
 COPY . /app
 
-RUN chmod +x /app/entrypoint.sh
+# Estáticos del admin de Django (servidos por WhiteNoise en producción). No requiere base de datos.
+RUN DJANGO_SECRET_KEY=collectstatic-only python manage.py collectstatic --noinput \
+    && chmod +x /app/entrypoint.sh
 
 EXPOSE 8000
 

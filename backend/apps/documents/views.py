@@ -34,7 +34,19 @@ from apps.documents.services import metrics as metrics_service
 from apps.documents.services.audit import log_action
 from apps.documents.services.expirations import alert_window_days, expiring_documents_queryset
 from apps.documents.services.ingestion import register_document, register_documents_batch
-from apps.documents.services.storage import get_presigned_url, presigned_url_ttl_seconds
+from apps.documents.services.storage import (
+    FILE_UNAVAILABLE_MESSAGE,
+    file_exists,
+    get_presigned_url,
+    presigned_url_ttl_seconds,
+)
+
+
+def file_unavailable_response() -> Response:
+    """US-019/US-020: el documento existe en la base pero su archivo no está en el bucket."""
+    return Response(
+        {"detail": FILE_UNAVAILABLE_MESSAGE, "code": "file_unavailable"}, status=status.HTTP_404_NOT_FOUND
+    )
 
 
 class DocumentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -257,6 +269,8 @@ class DocumentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets
     def view_url(self, request, pk=None):
         """URL prefirmada de lectura (15 min) + registro de CONSULTA_VISUAL."""
         document = self.get_object()
+        if not file_exists(document.file_path):
+            return file_unavailable_response()
         url = get_presigned_url(document.file_path)
         log_action(
             document,
@@ -277,6 +291,8 @@ class DocumentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, viewsets
     def download_url(self, request, pk=None):
         """Igual que view-url pero deja rastro de DESCARGA."""
         document = self.get_object()
+        if not file_exists(document.file_path):
+            return file_unavailable_response()
         url = get_presigned_url(document.file_path)
         log_action(
             document,

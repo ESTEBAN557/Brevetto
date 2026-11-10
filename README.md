@@ -2,6 +2,19 @@
 
 Plataforma inteligente de automatización, radicación, clasificación asistida por IA y consulta de expedientes digitales para **Coltebienes S.A.**
 
+## 🌐 Aplicación desplegada
+
+| | |
+| :--- | :--- |
+| **URL pública** | **`https://<PENDIENTE: dominio del despliegue en GCP>`** |
+| Manual de usuario | `https://<dominio>/ayuda` (también enlazado desde la app) |
+| Nube | Google Cloud Platform · Compute Engine (Docker Compose + Caddy con HTTPS automático) |
+| Guía de despliegue | [`deploy/README.md`](deploy/README.md) |
+| Wiki del proyecto | https://github.com/ESTEBAN557/Brevetto/wiki |
+
+Usuarios de demostración (datos ficticios de `seed_demo_data`): personal `demo` / `Brevetto2026!` en **Acceso
+empleados**; cliente NIT `900.845.112-3` en **Mi Portal** (el código de acceso se muestra en pantalla en modo demo).
+
 ---
 
 ## 🚀 Arquitectura y Tecnologías
@@ -15,13 +28,13 @@ Plataforma inteligente de automatización, radicación, clasificación asistida 
 ---
 
 ## 📖 Documentación del Proyecto
-Toda la especificación técnica y de arquitectura se encuentra en la carpeta [`/docs`](docs/):
-* [`docs/01_COLTEBIENES_CONTEXT.md`](docs/01_COLTEBIENES_CONTEXT.md): Situación actual y las 6 funcionalidades requeridas por Coltebienes.
-* [`docs/02_ARCHITECTURE_AND_STACK.md`](docs/02_ARCHITECTURE_AND_STACK.md): Diagrama de arquitectura por capas y servicios Docker.
-* [`docs/03_DATABASE_MODELS.md`](docs/03_DATABASE_MODELS.md): Modelos relacionales en Django ORM.
-* [`docs/04_API_SPECIFICATION.md`](docs/04_API_SPECIFICATION.md): Contratos de endpoints REST, payloads y códigos de respuesta.
-* [`docs/05_SPRINT_1_ROADMAP.md`](docs/05_SPRINT_1_ROADMAP.md): Checklist de tareas e historias de usuario de Sprint 1.
-* [`docs/06_GEMINI_AI_PIPELINE.md`](docs/06_GEMINI_AI_PIPELINE.md): Pipeline de Celery con Google Gemini y lógica Human-in-the-Loop.
+La documentación funcional, de pruebas, el caso de negocio y las evidencias de cada sprint viven en la
+**[wiki del proyecto](https://github.com/ESTEBAN557/Brevetto/wiki)**. En el repositorio quedan:
+
+* [`deploy/README.md`](deploy/README.md): despliegue en Google Cloud paso a paso, operación y copias de seguridad.
+* [`CHANGELOG.md`](CHANGELOG.md): cambios por versión.
+* [`e2e/`](e2e/): pruebas de extremo a extremo en navegador (Playwright).
+* Manual de usuario: integrado en la aplicación en la ruta `/ayuda`.
 
 ---
 
@@ -45,12 +58,26 @@ uv venv .venv --python 3.12 && uv pip install --python .venv/Scripts/python.exe 
 POSTGRES_HOST=localhost .venv/Scripts/python.exe -m pytest -v
 ```
 
+Calidad del código (mismas verificaciones que el CI):
+```bash
+cd backend && uv pip install --python .venv/Scripts/python.exe -r requirements-dev.txt
+.venv/Scripts/python.exe -m ruff check . && .venv/Scripts/python.exe -m ruff format --check .
+.venv/Scripts/python.exe -m mypy apps config
+POSTGRES_HOST=localhost .venv/Scripts/python.exe -m pytest --cov=apps
+```
+
+Pruebas de extremo a extremo (navegador), con la aplicación levantada y los datos de demostración:
+```bash
+cd e2e && npm install && npx playwright install chromium
+BREVETTO_URL=http://localhost:3000 npm test      # o https://localhost con docker-compose.prod.yml
+```
+
 ### 4. Servicios y puertos del entorno local
 
 | Servicio | URL / Puerto | Credenciales dev (.env.example) |
 | :--- | :--- | :--- |
 | API Django | http://localhost:8000/api/v1/health/ | JWT en `/api/v1/auth/token/` |
-| Admin Django | http://localhost:8000/admin/ | crear con `manage.py createsuperuser` |
+| Admin Django | http://localhost:8000/admin/ (en producción: `/django-admin/`) | crear con `manage.py createsuperuser` |
 | Frontend Next.js | http://localhost:3000 | — |
 | PostgreSQL 16 | localhost:5432 | brevetto / brevetto |
 | Redis 7 | localhost:6379 | — |
@@ -89,6 +116,10 @@ Pipeline IA: `documents.process_document_content` (Celery) descarga el archivo d
 | `/admin/documents/{id}` | Ficha del documento, edición de metadatos, descarga segura e historial de auditoría |
 | `/admin/contracts` · `/admin/contracts/{id}` | Contratos, alta con cliente nuevo o existente, expediente agrupado por categoría y auditoría |
 | `/portal/radicacion` | Portal público del inquilino: valida contrato + NIT, radica y descarga/imprime el comprobante |
+| `/admin/requerimientos` · `/admin/requerimientos/{id}` | Atención de requerimientos de clientes: estados, asesor, solución, chat y adjuntos |
+| `/admin/audit` | Auditoría global inmutable con filtros |
+| `/login`, `/portal/*` | Mi Portal del cliente: contrato, documentos, radicación y requerimientos |
+| `/ayuda` | Manual de usuario para clientes y personal |
 
 API del portal público (sin JWT, con throttling y token temporal firmado de 30 min):
 `POST /api/v1/portal/verify-contract/` y `POST /api/v1/portal/submit-document/`.

@@ -14,6 +14,7 @@ from pathlib import PurePosixPath
 
 from django.conf import settings
 from django.core.exceptions import SuspiciousFileOperation
+from django.core.files import File
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.utils import timezone
@@ -66,7 +67,7 @@ def build_object_key(
     return f"{prefix}/{filing_number}_{safe_name}"
 
 
-def store_document_file(key: str, file) -> str:
+def store_document_file(key: str, file: File) -> str:
     """Sube el archivo y devuelve la clave final (el storage puede renombrar si ya existe)."""
     if hasattr(file, "seek"):
         file.seek(0)
@@ -78,8 +79,21 @@ def get_file_bytes(key: str) -> bytes:
         return handle.read()
 
 
+FILE_UNAVAILABLE_MESSAGE = (
+    "El archivo de este documento no está disponible en el repositorio, por lo que no se puede "
+    "consultar ni descargar. Informe al administrador del sistema."
+)
+
+
 def file_exists(key: str) -> bool:
-    return default_storage.exists(key)
+    """True si el objeto existe en el bucket. Un error del almacenamiento se trata como "no disponible"."""
+    if not key:
+        return False
+    try:
+        return default_storage.exists(key)
+    except Exception:  # noqa: BLE001 - S3/MinIO caído: el usuario debe recibir un mensaje claro, no un 500
+        logger.exception("No fue posible verificar el objeto %s en el almacenamiento", key)
+        return False
 
 
 def presigned_url_ttl_seconds() -> int:

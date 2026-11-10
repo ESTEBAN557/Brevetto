@@ -82,6 +82,8 @@ class ClientDocumentSerializer(serializers.ModelSerializer):
         return os.path.splitext(obj.original_filename)[0]
 
     def get_detail(self, obj: Document) -> dict:
+        # Solo se listan documentos archivados en un expediente (ver services.client_documents).
+        assert obj.digital_record is not None
         client = obj.digital_record.contract.client
         return {
             "beneficiary": {
@@ -101,7 +103,7 @@ class ClientDocumentSerializer(serializers.ModelSerializer):
 
 class ClientDocumentUploadSerializer(serializers.Serializer):
     contract = serializers.PrimaryKeyRelatedField(queryset=Contract.objects.all())
-    document_type = serializers.SlugRelatedField(
+    document_type: serializers.SlugRelatedField = serializers.SlugRelatedField(
         slug_field="code", queryset=services.publishable_document_types()
     )
     file = serializers.FileField()
@@ -135,7 +137,7 @@ class ServiceRequestListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ServiceRequest
-        fields = (
+        fields: tuple[str, ...] = (
             "id", "subject", "created_at", "service", "subcategory", "assigned_to", "status", "status_display",
             "contract_number",
         )  # fmt: skip

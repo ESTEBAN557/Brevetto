@@ -1,0 +1,31 @@
+# Brevetto frontend — imagen de producción (Next.js standalone, multi-etapa).
+# La API se consume en la misma URL pública (/api/v1), enrutada por Caddy: no hay que recompilar
+# la imagen al cambiar de dominio.
+
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+ARG NEXT_PUBLIC_API_URL=/api/v1
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+FROM node:20-alpine AS run
+WORKDIR /app
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0 \
+    NEXT_TELEMETRY_DISABLED=1
+RUN addgroup -S brevetto && adduser -S brevetto -G brevetto
+COPY --from=build /app/public ./public
+COPY --from=build --chown=brevetto:brevetto /app/.next/standalone ./
+COPY --from=build --chown=brevetto:brevetto /app/.next/static ./.next/static
+USER brevetto
+EXPOSE 3000
+CMD ["node", "server.js"]

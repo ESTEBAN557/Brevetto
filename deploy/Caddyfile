@@ -1,0 +1,35 @@
+# Proxy inverso de Brevetto con HTTPS automático (Let's Encrypt).
+# BREVETTO_DOMAIN puede ser un dominio propio o <IP-con-guiones>.sslip.io (ver deploy/README.md).
+
+{$BREVETTO_DOMAIN} {
+	encode gzip
+
+	# API REST, admin de Django y sus estáticos -> Django (Gunicorn)
+	@django path /api/* /django-admin/* /django-admin /static/*
+	handle @django {
+		reverse_proxy backend:8000
+	}
+
+	# Descargas con URL prefirmada: la firma incluye el Host público, que Caddy conserva.
+	@storage path /{$AWS_STORAGE_BUCKET_NAME}/*
+	handle @storage {
+		reverse_proxy minio:9000
+	}
+
+	# Todo lo demás -> Next.js (landing, Mi Portal, panel del personal, manual de usuario)
+	handle {
+		reverse_proxy frontend:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

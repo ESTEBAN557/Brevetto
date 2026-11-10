@@ -48,7 +48,12 @@ from apps.customer.serializers import (
 from apps.documents.models import AuditLog, Document
 from apps.documents.services.audit import log_action
 from apps.documents.services.ingestion import DocumentValidationError, register_document
-from apps.documents.services.storage import get_presigned_url, presigned_url_ttl_seconds
+from apps.documents.services.storage import (
+    FILE_UNAVAILABLE_MESSAGE,
+    file_exists,
+    get_presigned_url,
+    presigned_url_ttl_seconds,
+)
 from apps.portal.services import mask_identification
 
 GENERIC_CODE_MESSAGE = (
@@ -299,6 +304,8 @@ class DocumentOptionsView(ClientAPIView):
 class DocumentDownloadView(ClientAPIView):
     def get(self, request, pk):
         document = get_object_or_404(services.client_documents(self.client), pk=pk)
+        if not file_exists(document.file_path):
+            return Response({"detail": FILE_UNAVAILABLE_MESSAGE}, status=status.HTTP_404_NOT_FOUND)
         url = get_presigned_url(document.file_path)
         log_action(
             document,
@@ -418,6 +425,8 @@ class ServiceRequestAttachmentDownloadView(ServiceRequestMixin, ClientAPIView):
     def get(self, request, pk, attachment_id):
         service_request = self.get_request_object(pk)
         attachment = get_object_or_404(service_request.attachments, pk=attachment_id)
+        if not file_exists(attachment.file_path):
+            return Response({"detail": FILE_UNAVAILABLE_MESSAGE}, status=status.HTTP_404_NOT_FOUND)
         return Response(
             {
                 "download_url": get_presigned_url(attachment.file_path),

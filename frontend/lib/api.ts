@@ -15,9 +15,19 @@ import type {
   PortalReceipt,
   PortalSession,
   PresignedUrl,
+  StaffRequestSummary,
+  StaffServiceRequest,
+  StaffServiceRequestDetail,
 } from "./types";
 
+// En desarrollo apunta al backend en :8000. En producción (docker-compose.prod.yml) se compila con
+// NEXT_PUBLIC_API_URL=/api/v1: ruta relativa, mismo dominio que el frontend (el proxy Caddy la enruta).
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1").replace(/\/$/, "");
+
+function absoluteBase(): string {
+  if (typeof window !== "undefined") return window.location.origin;
+  return "http://localhost:3000";
+}
 
 export class ApiError extends Error {
   status: number;
@@ -50,7 +60,7 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
 }
 
 export function buildUrl(path: string, query?: RequestOptions["query"]): string {
-  const url = new URL(path.startsWith("http") ? path : `${API_URL}${path}`);
+  const url = new URL(path.startsWith("http") ? path : `${API_URL}${path}`, absoluteBase());
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, String(value));
@@ -62,7 +72,7 @@ export function buildUrl(path: string, query?: RequestOptions["query"]): string 
 async function refreshAccessToken(): Promise<string | null> {
   const tokens = getTokens();
   if (!tokens?.refresh) return null;
-  const response = await fetch(`${API_URL}/auth/token/refresh/`, {
+  const response = await fetch(buildUrl("/auth/token/refresh/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh: tokens.refresh }),
@@ -204,6 +214,35 @@ export const auditApi = {
 // --------------------------------------------------------------- métricas ---
 export const metricsApi = {
   summary: (days = 30) => apiFetch<MetricsSummary>("/metrics/summary/", { query: { days } }),
+};
+
+// --------------------------------------------- requerimientos (personal) ---
+export const serviceRequestsApi = {
+  list: (query?: RequestOptions["query"]) =>
+    apiFetch<Paginated<StaffServiceRequest>>("/service-requests/", { query }),
+  summary: () => apiFetch<StaffRequestSummary>("/service-requests/summary/"),
+  get: (id: number | string) => apiFetch<StaffServiceRequestDetail>(`/service-requests/${id}/`),
+  update: (
+    id: number | string,
+    body: { status?: string; assigned_to?: string; solution?: string; note?: string },
+  ) => apiFetch<StaffServiceRequestDetail>(`/service-requests/${id}/`, { method: "PATCH", body }),
+  reply: (id: number | string, body: string) =>
+    apiFetch<StaffServiceRequestDetail["messages"][number]>(`/service-requests/${id}/messages/`, {
+      method: "POST",
+      body: { body },
+    }),
+  attach: (id: number | string, files: File[]) => {
+    const form = new FormData();
+    files.forEach((file) => form.append("files", file));
+    return apiFetch<StaffServiceRequestDetail["attachments"]>(`/service-requests/${id}/attachments/`, {
+      method: "POST",
+      body: form,
+    });
+  },
+  attachmentUrl: (id: number | string, attachmentId: number) =>
+    apiFetch<{ download_url: string; original_filename: string }>(
+      `/service-requests/${id}/attachments/${attachmentId}/download/`,
+    ),
 };
 
 export const clientsApi = {

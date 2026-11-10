@@ -62,7 +62,7 @@ class AIConfigurationError(AIExtractionError):
     """La integración con Gemini no está configurada (sin API key). No reintentable."""
 
 
-def _clamp_confidence(value) -> float:
+def _clamp_confidence(value: Any) -> float:
     try:
         score = float(value)
     except (TypeError, ValueError):
@@ -70,7 +70,7 @@ def _clamp_confidence(value) -> float:
     return max(0.0, min(1.0, score))
 
 
-def _clean_str(value) -> str | None:
+def _clean_str(value: Any) -> str | None:
     if value is None:
         return None
     text = str(value).strip()
@@ -146,13 +146,13 @@ class GeminiExtractor:
         self.fallback_model = (
             fallback_model if fallback_model is not None else getattr(settings, "GEMINI_FALLBACK_MODEL", "")
         ) or None
-        self._client = None
+        self._client: Any = None
 
     @property
     def is_configured(self) -> bool:
         return bool(self.api_key)
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         if self._client is None:
             try:
                 from google import genai

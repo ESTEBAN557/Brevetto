@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from django.db import transaction
 
@@ -11,7 +12,7 @@ from apps.core.models import Contract, DigitalRecord
 logger = logging.getLogger(__name__)
 
 
-def create_contract(**data) -> Contract:
+def create_contract(**data: Any) -> Contract:
     """Crea el contrato, su DigitalRecord (vía señal) y provisiona la carpeta en S3/MinIO.
 
     Un fallo del storage no impide registrar el contrato: el prefijo se crea de

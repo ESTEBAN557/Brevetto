@@ -1,6 +1,8 @@
 # Entorno y Secretos
 .env
 *.env
+.env.prod
+.env.*.local
 *.local
 
 # Python
@@ -15,12 +17,15 @@ htmlcov/
 backend/staticfiles/
 backend/media/
 
-# Node / Next.js
-frontend/node_modules/
+# Node / Next.js / E2E
+node_modules/
+**/node_modules/
 frontend/.next/
 frontend/out/
 frontend/next-env.d.ts
 frontend/tsconfig.tsbuildinfo
+e2e/playwright-report/
+e2e/test-results/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

@@ -11,6 +11,7 @@ from apps.core.models import Client, Contract, DocumentType
 from apps.customer.models import ClientAccount, LoginCode, ServiceRequest
 from apps.customer.services import _hash_code
 from apps.documents.models import AuditLog, Document, FilingSequence
+from conftest import store_sample_file
 
 BASE = "/api/v1/client-portal"
 NIT = {"document_type": "NIT", "identification_number": "900.123.456-1"}
@@ -50,7 +51,7 @@ def make_published_document(contract, code, **extra):
         filing_number=FilingSequence.get_next_number(extra.pop("day", date(2026, 10, 8))),
         digital_record=contract.digital_record,
         document_type=document_type,
-        file_path="expedientes/x/archivo.pdf",
+        file_path=store_sample_file("expedientes/x/archivo.pdf"),
         original_filename=extra.pop("name", "Estado de cuenta octubre de 2026.pdf"),
         file_hash="b" * 64,
         file_size_bytes=100,

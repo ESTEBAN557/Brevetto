@@ -7,6 +7,30 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.6.0] - Sprint 3: producto final, despliegue y manual de usuario - 2026-11-10
+
+### ✨ Añadido (Added)
+- **Atención de requerimientos por el personal** (deuda del Sprint 2): API `/api/v1/service-requests/` (JWT) con bandeja filtrable por estado y búsqueda, resumen por estado, cambio de estado, asignación de asesor, solución, nota de seguimiento, chat y adjuntos. Pantallas `/admin/requerimientos` y `/admin/requerimientos/{id}` con contador de casos abiertos en el menú. Reglas: asignar un caso nuevo lo pasa a «Asignado»; resolver o cerrar exige la solución; un caso cerrado no admite cambios (409).
+- **Avisos por correo al cliente** cuando el personal responde o cambia el estado; configuración SMTP real por variables `EMAIL_*` (sin `EMAIL_HOST` el correo se imprime en el log).
+- **Manual de usuario integrado** en `/ayuda` (público, imprimible), con guías para clientes y personal, capturas reales, glosario y preguntas frecuentes; enlazado desde el panel, Mi Portal y la página de inicio.
+- **Despliegue en la nube**: `docker-compose.prod.yml` (Gunicorn, Next.js standalone, Caddy con HTTPS automático, solo puertos 80/443 expuestos), `frontend/Dockerfile.prod`, `deploy/Caddyfile`, `deploy/.env.prod.example`, `deploy/setup-vm.sh` y guía `deploy/README.md` para GCP Compute Engine. Verificado de punta a punta en local (descarga de documentos con URL prefirmada a través del proxy).
+- **US-021 Imprimir documento** (era «Won't»): botón Imprimir en el visor; imprime una copia local temporal sin modificar el original.
+- **US-022 Filtrar por tipo**: filtro por tipo documental en el expediente (además de la categoría), botón «Quitar filtros» y mensaje específico cuando ningún documento coincide.
+- **Pruebas**: `test_sprint3_acceptance.py` (41 pruebas, una por caso TC-086…TC-130 de US-018 a US-027), `test_staff_requests.py` (15 pruebas) y suite E2E con Playwright en `e2e/` (13 pruebas de navegador + generador de capturas del manual).
+
+### 🔒 Corregido (Fixed)
+- **US-019/US-020**: si el archivo de un documento no existe en el almacenamiento, `view-url`, `download-url` y las descargas de Mi Portal responden 404 con un mensaje claro y no registran una consulta o descarga que no ocurrió (antes entregaban un enlace roto).
+- Errores de descarga visibles en la ficha del documento, el visor y Mi Portal (antes se perdían en silencio).
+- El expediente cargaba solo los primeros 25 documentos: ahora recorre todas las páginas antes de agrupar y filtrar.
+- Las tablas anchas ensanchaban toda la página del panel: contenedores flex con `min-width: 0` y columna de acciones fija.
+- **mypy: de 27 hallazgos a 0** en `apps` y `config` (anotaciones de tipos y tres casos reales de valores opcionales). El CI ahora bloquea el merge si mypy falla y exige cobertura ≥ 90 % (`pytest-cov` agregado a `requirements-dev.txt`).
+
+### 🔄 Cambiado (Changed)
+- `buildUrl` acepta una API relativa (`NEXT_PUBLIC_API_URL=/api/v1`): frontend y API comparten dominio en producción sin recompilar por dominio.
+- La ruta del admin de Django es configurable (`DJANGO_ADMIN_URL`; `django-admin/` en producción para no chocar con `/admin` del frontend). WhiteNoise sirve sus estáticos cuando `DEBUG=False`; ajustes `CSRF_TRUSTED_ORIGINS` y `DJANGO_BEHIND_TLS_PROXY`.
+
+---
+
 ## [0.5.0] - Mi Portal (portal de clientes) y nuevo acceso - 2026-10-20
 
 ### ✨ Añadido (Added)

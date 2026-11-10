@@ -72,7 +72,8 @@ class ServiceRequest(TimeStampedModel):
         RESOLVED = "RESUELTO", "Resuelto"
         CLOSED = "CERRADO", "Cerrado"
 
-    id = models.BigAutoField(primary_key=True)
+    # Radicado legible "#123" en vez del UUID de TimeStampedModel (decisión intencional).
+    id = models.BigAutoField(primary_key=True)  # type: ignore[assignment]
     client = models.ForeignKey(Client, on_delete=models.PROTECT, related_name="service_requests")
     contract = models.ForeignKey(Contract, on_delete=models.PROTECT, related_name="service_requests")
     case_type = models.CharField(max_length=60)

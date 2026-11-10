@@ -32,6 +32,38 @@ export function PdfViewer({ documentId, mimeType, filename }: PdfViewerProps) {
   }, [load]);
 
   const isPdf = mimeType === "application/pdf";
+  const [printing, setPrinting] = useState(false);
+
+  /** US-021: imprime el documento tal como está guardado (copia local temporal; el original no cambia). */
+  async function print() {
+    if (!url) return;
+    setPrinting(true);
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const frame = document.createElement("iframe");
+      frame.style.position = "fixed";
+      frame.style.width = "0";
+      frame.style.height = "0";
+      frame.style.border = "0";
+      frame.src = blobUrl;
+      frame.onload = () => {
+        frame.contentWindow?.focus();
+        frame.contentWindow?.print();
+        window.setTimeout(() => {
+          frame.remove();
+          URL.revokeObjectURL(blobUrl);
+        }, 60_000);
+      };
+      document.body.appendChild(frame);
+    } catch {
+      // Si el navegador bloquea la impresión directa, se abre el documento para imprimirlo desde allí.
+      window.open(url, "_blank", "noopener");
+    } finally {
+      setPrinting(false);
+    }
+  }
 
   return (
     <div className="viewer">
@@ -42,6 +74,11 @@ export function PdfViewer({ documentId, mimeType, filename }: PdfViewerProps) {
           <button type="button" className="btn-secondary btn-sm" onClick={load}>
             Renovar acceso
           </button>
+          {url && (
+            <button type="button" className="btn-secondary btn-sm" onClick={print} disabled={printing}>
+              {printing ? <span className="spinner" /> : "🖨"} Imprimir
+            </button>
+          )}
           {url && (
             <a href={url} target="_blank" rel="noreferrer" className="small">
               Abrir en pestaña

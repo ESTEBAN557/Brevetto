@@ -10,8 +10,10 @@ y expired. La bitácora es el registro inmutable de que la alerta fue emitida.
 from __future__ import annotations
 
 from datetime import date, timedelta
+from typing import Any
 
 from django.conf import settings
+from django.db.models import QuerySet
 from django.utils import timezone
 
 from apps.documents.models import AuditLog, Document
@@ -57,7 +59,7 @@ def alert_stage(
 
 def expiring_documents_queryset(
     days: int | None = None, include_expired: bool = True, today: date | None = None
-):
+) -> QuerySet[Document]:
     """Documentos con vigencia que vence dentro de `days` días (y los ya vencidos si se pide)."""
     today = today or timezone.localdate()
     limit = today + timedelta(days=days if days is not None else alert_window_days())
@@ -98,7 +100,7 @@ def check_expiring_documents(days: int | None = None, today: date | None = None)
     """Recorre los documentos por vencer y registra la alerta de cada etapa una sola vez."""
     today = today or timezone.localdate()
     window = days if days is not None else alert_window_days()
-    summary = {
+    summary: dict[str, Any] = {
         "checked": 0,
         "alerts_created": 0,
         STAGE_EXPIRED: 0,
@@ -110,7 +112,7 @@ def check_expiring_documents(days: int | None = None, today: date | None = None)
     for document in expiring_documents_queryset(window, include_expired=True, today=today):
         summary["checked"] += 1
         stage = alert_stage(document.expiration_date, today, window)
-        if stage is None:
+        if stage is None or document.expiration_date is None:
             continue
         summary[stage] += 1
         already_alerted = AuditLog.objects.filter(

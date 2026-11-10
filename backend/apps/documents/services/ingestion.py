@@ -9,9 +9,14 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from collections.abc import Sequence
+from datetime import date
 from pathlib import PurePosixPath
+from typing import Any
 
 from django.conf import settings
+from django.core.files import File
+from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 
 from apps.core.models import DigitalRecord
@@ -38,7 +43,7 @@ def get_extension(filename: str) -> str:
     return PurePosixPath(filename or "").suffix.lower()
 
 
-def validate_upload(file) -> str:
+def validate_upload(file: UploadedFile) -> str:
     """Valida extensión, tamaño y MIME declarado. Devuelve el MIME canónico por extensión."""
     allowed_extensions = tuple(ext.lower() for ext in settings.UPLOAD_ALLOWED_EXTENSIONS)
     max_size = settings.UPLOAD_MAX_SIZE_BYTES
@@ -65,7 +70,7 @@ def validate_upload(file) -> str:
     return MIME_BY_EXTENSION[extension]
 
 
-def compute_sha256(file) -> str:
+def compute_sha256(file: File) -> str:
     """Checksum SHA-256 leyendo por bloques; deja el puntero al inicio del archivo."""
     digest = hashlib.sha256()
     file.seek(0)
@@ -75,7 +80,7 @@ def compute_sha256(file) -> str:
     return digest.hexdigest()
 
 
-def enqueue_processing(document_id) -> None:
+def enqueue_processing(document_id: object) -> None:
     """Dispara el pipeline asíncrono de IA (US-009). Import diferido para evitar ciclos."""
     from apps.documents.tasks import process_document_content_task
 
@@ -84,22 +89,25 @@ def enqueue_processing(document_id) -> None:
 
 def register_document(
     *,
-    file,
+    file: UploadedFile,
     source_channel: str,
-    user=None,
+    user: Any = None,
     digital_record: DigitalRecord | None = None,
-    request=None,
+    request: Any = None,
     external_sender_name: str = "",
-    document_date=None,
+    document_date: date | None = None,
 ) -> Document:
     """Radica un documento individual y programa su procesamiento al confirmar la transacción."""
     mime_type = validate_upload(file)
+    # validate_upload ya garantizó nombre con extensión válida y tamaño > 0.
+    original_name = file.name or "documento"
+    file_size = file.size or 0
 
     # El radicado se genera en su propia transacción corta para no retener el bloqueo
     # de la secuencia mientras se sube el archivo al bucket.
     filing_number = generate_filing_number()
     file_hash = compute_sha256(file)
-    object_key = build_object_key(filing_number, file.name, digital_record)
+    object_key = build_object_key(filing_number, original_name, digital_record)
     stored_key = store_document_file(object_key, file)
 
     with transaction.atomic():
@@ -107,9 +115,9 @@ def register_document(
             filing_number=filing_number,
             digital_record=digital_record,
             file_path=stored_key,
-            original_filename=file.name[:255],
+            original_filename=original_name[:255],
             file_hash=file_hash,
-            file_size_bytes=file.size,
+            file_size_bytes=file_size,
             mime_type=mime_type,
             source_channel=source_channel,
             processing_status=Document.ProcessingStatus.RECEIVED,
@@ -141,11 +149,11 @@ def register_document(
 
 def register_documents_batch(
     *,
-    files,
+    files: Sequence[UploadedFile],
     source_channel: str,
-    user=None,
+    user: Any = None,
     digital_record: DigitalRecord | None = None,
-    request=None,
+    request: Any = None,
 ) -> list[Document]:
     """Radica varios documentos (US-011). Valida todos antes de radicar el primero."""
     errors = []

@@ -1,4 +1,5 @@
 // Tipos compartidos con la API REST de Brevetto (/api/v1).
+import type { RequestStatus, ServiceRequestDetail, ServiceRequestSummary } from "./client-types";
 
 export type ProcessingStatus =
   | "RECIBIDO"
@@ -237,4 +238,29 @@ export interface PortalReceipt {
   sender_name: string;
   processing_status: ProcessingStatus;
   receipt_signature: string;
+}
+
+// ------------------------------------------------ requerimientos (personal) ---
+
+export interface StaffServiceRequest extends ServiceRequestSummary {
+  case_type: string;
+  client_name: string;
+  client_identification: string;
+  message_count: number;
+  attachment_count: number;
+  updated_at: string;
+}
+
+export interface StaffServiceRequestDetail extends ServiceRequestDetail {
+  client_name: string;
+  client_identification: string;
+  client_email: string;
+  client_phone: string;
+  contract_id: string;
+}
+
+export interface StaffRequestSummary {
+  total: number;
+  open: number;
+  by_status: { code: RequestStatus; label: string; count: number }[];
 }

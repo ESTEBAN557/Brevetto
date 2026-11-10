@@ -22,6 +22,7 @@ google-genai>=1.0,<2.0
 
 # --- Servidor ---------------------------------------------------------------
 gunicorn>=23.0,<24.0
+whitenoise>=6.7,<7.0  # estáticos del admin de Django en producción
 
 # --- Testing ----------------------------------------------------------------
 pytest>=8.3,<9.0

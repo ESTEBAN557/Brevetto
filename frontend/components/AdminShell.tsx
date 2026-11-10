@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { serviceRequestsApi } from "@/lib/api";
 import { clearTokens } from "@/lib/auth";
 import { Loading } from "./DataState";
 
@@ -12,6 +13,7 @@ const NAV = [
   { href: "/admin/upload", label: "Radicar documentos" },
   { href: "/admin/review", label: "Validación HITL" },
   { href: "/admin/contracts", label: "Contratos y expedientes" },
+  { href: "/admin/requerimientos", label: "Requerimientos" },
   { href: "/admin/audit", label: "Auditoría global" },
 ];
 
@@ -21,6 +23,7 @@ const TITLES: { prefix: string; title: string; sub: string }[] = [
   { prefix: "/admin/contracts", title: "Expedientes digitales", sub: "Contratos de arrendamiento y venta" },
   { prefix: "/admin/documents", title: "Documento radicado", sub: "Ficha técnica, metadatos y trazabilidad" },
   { prefix: "/admin/audit", title: "Auditoría", sub: "Bitácora inmutable de la gestión documental" },
+  { prefix: "/admin/requerimientos", title: "Requerimientos", sub: "Solicitudes, quejas y sugerencias de los clientes" },
   { prefix: "/admin", title: "Panel de control", sub: "Sistema de Gestión Documental · Coltebienes S.A." },
 ];
 
@@ -34,6 +37,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const { ready, username } = useAuthGuard();
   const pathname = usePathname();
   const router = useRouter();
+  const [openRequests, setOpenRequests] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!ready) return;
+    serviceRequestsApi
+      .summary()
+      .then((s) => setOpenRequests(s.open))
+      .catch(() => setOpenRequests(null));
+  }, [ready, pathname]);
 
   if (!ready) return <Loading label="Verificando sesión…" />;
 
@@ -64,9 +76,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
               <Link key={item.href} href={item.href} className={active ? "active" : undefined}>
                 <span className="dot" />
                 {item.label}
+                {item.href === "/admin/requerimientos" && !!openRequests && (
+                  <span className="nav-count" title="Requerimientos abiertos">
+                    {openRequests}
+                  </span>
+                )}
               </Link>
             );
           })}
+          <Link href="/ayuda#personal" target="_blank" className="nav-help">
+            <span className="dot" />
+            Manual de usuario ↗
+          </Link>
         </nav>
         <div className="sidebar-footer">
           <div className="session-chip">

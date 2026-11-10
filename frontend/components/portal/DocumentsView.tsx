@@ -38,6 +38,12 @@ const CONFIG: Record<DocumentCategorySlug, { variant: Variant; title: string; cr
   },
 };
 
+// Aviso compartido de error de descarga (ej. archivo no disponible en el repositorio, US-020).
+function notifyDownloadError(err: unknown) {
+  const message = err instanceof Error ? err.message : "No fue posible descargar el documento.";
+  window.dispatchEvent(new CustomEvent("brevetto:download-error", { detail: message }));
+}
+
 function DownloadButton({ doc, soft = false }: { doc: PortalDocument; soft?: boolean }) {
   const [busy, setBusy] = useState(false);
   return (
@@ -51,6 +57,8 @@ function DownloadButton({ doc, soft = false }: { doc: PortalDocument; soft?: boo
         setBusy(true);
         try {
           await clientApi.downloadDocument(doc.id);
+        } catch (err) {
+          notifyDownloadError(err);
         } finally {
           setBusy(false);
         }
@@ -216,7 +224,7 @@ export function DocumentsView({ category }: { category: DocumentCategorySlug }) 
             <button
               type="button"
               className="btn-ink-pill"
-              onClick={() => clientApi.downloadDocument(doc.id)}
+              onClick={() => clientApi.downloadDocument(doc.id).catch(notifyDownloadError)}
             >
               <Icon name="download" size={18} /> Descargar
             </button>
@@ -230,6 +238,7 @@ export function DocumentsView({ category }: { category: DocumentCategorySlug }) 
 
   return (
     <>
+      <DownloadErrorBanner />
       <PageHead
         crumbs={[{ label: "Inicio", href: "/portal" }, { label: "Documentos" }, { label: config.crumb }]}
         title={config.title}
@@ -262,5 +271,23 @@ export function DocumentsView({ category }: { category: DocumentCategorySlug }) 
         )}
       </div>
     </>
+  );
+}
+
+function DownloadErrorBanner() {
+  const [message, setMessage] = useState<string | null>(null);
+  useEffect(() => {
+    const handler = (event: Event) => setMessage((event as CustomEvent<string>).detail);
+    window.addEventListener("brevetto:download-error", handler);
+    return () => window.removeEventListener("brevetto:download-error", handler);
+  }, []);
+  if (!message) return null;
+  return (
+    <div className="alert alert-error" role="alert" style={{ marginBottom: "1rem", display: "flex", justifyContent: "space-between", gap: "1rem" }}>
+      <span>{message}</span>
+      <button type="button" className="btn-ghost btn-sm" onClick={() => setMessage(null)}>
+        Cerrar
+      </button>
+    </div>
   );
 }

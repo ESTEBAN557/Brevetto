@@ -71,10 +71,15 @@ export default function DocumentDetailPage() {
 
   async function download() {
     if (!doc) return;
-    const data = await documentsApi.downloadUrl(doc.id);
-    window.open(data.download_url, "_blank", "noopener");
-    const audit = await documentsApi.auditTrail(doc.id);
-    setTrail(audit.results);
+    setError(null);
+    try {
+      const data = await documentsApi.downloadUrl(doc.id);
+      window.open(data.download_url, "_blank", "noopener");
+      const audit = await documentsApi.auditTrail(doc.id);
+      setTrail(audit.results);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No fue posible descargar el documento");
+    }
   }
 
   if (error && !doc) {

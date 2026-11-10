@@ -35,6 +35,7 @@ export default function ContractDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("documents");
   const [category, setCategory] = useState<DocumentCategory | "">("");
+  const [typeCode, setTypeCode] = useState("");
   const [preview, setPreview] = useState<Document | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
@@ -48,9 +49,16 @@ export default function ContractDetailPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [c, docs] = await Promise.all([contractsApi.get(params.id), contractsApi.documents(params.id)]);
+        const [c, firstPage] = await Promise.all([contractsApi.get(params.id), contractsApi.documents(params.id)]);
+        // El expediente se pagina de 25 en 25: se traen todas las páginas para filtrar y agrupar completo.
+        const all = [...firstPage.results];
+        for (let page = 2, next = firstPage.next; next && page <= 40; page += 1) {
+          const more = await contractsApi.documents(params.id, { page });
+          all.push(...more.results);
+          next = more.next;
+        }
         setContract(c);
-        setDocuments(docs.results);
+        setDocuments(all);
         await loadTrail("");
       } catch (err) {
         setError(err instanceof Error ? err.message : "No fue posible cargar el expediente");
@@ -67,10 +75,19 @@ export default function ContractDetailPage() {
     for (const doc of documents) {
       const key = doc.document_type?.category ?? "SIN_TIPO";
       if (category && key !== category) continue;
+      if (typeCode && doc.document_type?.code !== typeCode) continue;
       map.set(key, [...(map.get(key) ?? []), doc]);
     }
     return map;
-  }, [documents, category]);
+  }, [documents, category, typeCode]);
+
+  // US-022: tipos documentales presentes en el expediente (para el filtro por tipo).
+  const typeOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const doc of documents) if (doc.document_type) map.set(doc.document_type.code, doc.document_type.name);
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], "es"));
+  }, [documents]);
+  const filtering = Boolean(category || typeCode);
 
   const expiring = documents.filter((d) => {
     const days = daysUntil(d.expiration_date);
@@ -150,8 +167,26 @@ export default function ContractDetailPage() {
       {tab === "documents" && (
         <div className="stack">
           <div className="row">
-            <span className="small muted">Filtrar por categoría:</span>
-            <select value={category} onChange={(e) => setCategory(e.target.value as DocumentCategory | "")} style={{ width: 260 }}>
+            <label className="row small muted" htmlFor="filter-type">
+              Tipo de documento:
+            </label>
+            <select id="filter-type" value={typeCode} onChange={(e) => setTypeCode(e.target.value)} style={{ width: 260 }}>
+              <option value="">Todos los tipos</option>
+              {typeOptions.map(([code, name]) => (
+                <option key={code} value={code}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <label className="row small muted" htmlFor="filter-category">
+              Categoría:
+            </label>
+            <select
+              id="filter-category"
+              value={category}
+              onChange={(e) => setCategory(e.target.value as DocumentCategory | "")}
+              style={{ width: 220 }}
+            >
               <option value="">Todas</option>
               {CATEGORY_ORDER.map((c) => (
                 <option key={c} value={c}>
@@ -159,10 +194,26 @@ export default function ContractDetailPage() {
                 </option>
               ))}
             </select>
+            {filtering && (
+              <button
+                type="button"
+                className="btn-ghost btn-sm"
+                onClick={() => {
+                  setCategory("");
+                  setTypeCode("");
+                }}
+              >
+                Quitar filtros
+              </button>
+            )}
           </div>
           {orderedKeys.length === 0 && (
             <div className="card">
-              <Empty>Este expediente aún no tiene documentos archivados.</Empty>
+              <Empty>
+                {documents.length === 0
+                  ? "Este expediente aún no tiene documentos archivados."
+                  : "No hay documentos del tipo o la categoría seleccionados en este expediente."}
+              </Empty>
             </div>
           )}
           {orderedKeys.map((key) => (
@@ -171,6 +222,7 @@ export default function ContractDetailPage() {
                 <h3>{key === "SIN_TIPO" ? "Sin tipificar" : CATEGORY_LABELS[key as DocumentCategory]}</h3>
                 <span className="small muted">{grouped.get(key)?.length} documento(s)</span>
               </div>
+              <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
@@ -181,7 +233,7 @@ export default function ContractDetailPage() {
                     <th>Vencimiento</th>
                     <th>Estado</th>
                     <th>Radicado el</th>
-                    <th />
+                    <th className="sticky-actions" />
                   </tr>
                 </thead>
                 <tbody>
@@ -209,7 +261,7 @@ export default function ContractDetailPage() {
                           <StatusBadge status={doc.processing_status} />
                         </td>
                         <td className="nowrap">{formatDateTime(doc.created_at)}</td>
-                        <td className="right nowrap">
+                        <td className="right nowrap sticky-actions">
                           <button type="button" className="btn-ghost btn-sm" onClick={() => setPreview(doc)}>
                             Vista previa
                           </button>{" "}
@@ -222,6 +274,7 @@ export default function ContractDetailPage() {
                   })}
                 </tbody>
               </table>
+              </div>
             </section>
           ))}
         </div>

@@ -220,6 +220,88 @@ def create_service_request(
     return service_request
 
 
+def notify_client(service_request: ServiceRequest, subject: str, body: str) -> None:
+    """Aviso por correo al cliente cuando el personal responde o cambia el estado.
+
+    Un fallo del servidor de correo nunca debe impedir la gestión del requerimiento.
+    """
+    email = (service_request.client.email or "").strip()
+    if not email:
+        return
+    link = f"{settings.PUBLIC_FRONTEND_URL}/portal/requerimientos/{service_request.pk}"
+    send_mail(
+        f"Requerimiento #{service_request.pk} · {subject}",
+        f"{body}\n\nAsunto: {service_request.subject}\nConsulta el detalle en Mi Portal: {link}\n\n"
+        "Coltebienes S.A.S.",
+        getattr(settings, "DEFAULT_FROM_EMAIL", None),
+        [email],
+        fail_silently=True,
+    )
+
+
+class ServiceRequestClosed(Exception):
+    """El requerimiento está cerrado: no admite cambios, mensajes ni adjuntos."""
+
+
+class SolutionRequired(Exception):
+    """Para resolver o cerrar un requerimiento se debe registrar la solución."""
+
+
+@transaction.atomic
+def staff_update_request(
+    service_request: ServiceRequest,
+    *,
+    actor: str,
+    status: str | None = None,
+    assigned_to: str | None = None,
+    solution: str | None = None,
+    note: str = "",
+) -> ServiceRequest:
+    """Gestión del requerimiento por el personal, dejando rastro en la línea de seguimiento."""
+    if service_request.is_closed:
+        raise ServiceRequestClosed()
+
+    fields: list[str] = []
+    if assigned_to is not None and assigned_to.strip() != service_request.assigned_to:
+        service_request.assigned_to = assigned_to.strip()
+        fields.append("assigned_to")
+    if solution is not None and solution.strip() != service_request.solution:
+        service_request.solution = solution.strip()
+        fields.append("solution")
+
+    # Asignar un caso nuevo lo pasa a "Asignado" automáticamente.
+    if "assigned_to" in fields and not status and service_request.status == ServiceRequest.Status.NEW:
+        status = ServiceRequest.Status.ASSIGNED
+
+    final_statuses = (ServiceRequest.Status.RESOLVED, ServiceRequest.Status.CLOSED)
+    if status in final_statuses and not service_request.solution:
+        raise SolutionRequired()
+
+    if fields:
+        service_request.save(update_fields=[*fields, "updated_at"])
+
+    if status and status != service_request.status:
+        service_request.change_status(status, actor=actor, note=note.strip())
+        notify_client(
+            service_request,
+            f"Nuevo estado: {service_request.get_status_display()}",
+            f"Tu requerimiento cambió al estado «{service_request.get_status_display()}»."
+            + (f"\nSolución registrada: {service_request.solution}" if status in final_statuses else ""),
+        )
+    elif "assigned_to" in fields:
+        ServiceRequestEvent.objects.create(
+            request=service_request,
+            status=service_request.status,
+            actor=actor,
+            note=note.strip() or f"Asignado a {service_request.assigned_to}.",
+        )
+    elif note.strip():
+        ServiceRequestEvent.objects.create(
+            request=service_request, status=service_request.status, actor=actor, note=note.strip()
+        )
+    return service_request
+
+
 def add_attachment(service_request: ServiceRequest, file, *, from_client: bool) -> ServiceRequestAttachment:
     safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", file.name)[:120] or "adjunto"
     key = f"requerimientos/{service_request.pk}/{secrets.token_hex(6)}-{safe_name}"

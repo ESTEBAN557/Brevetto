@@ -46,7 +46,7 @@ class ContractResolution:
         return self.method == "ambiguous"
 
 
-def parse_iso_date(value) -> date | None:
+def parse_iso_date(value: Any) -> date | None:
     if not value:
         return None
     try:

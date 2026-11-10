@@ -44,6 +44,9 @@ export default function HomePage() {
             <span className="option-cta">Radicar un documento →</span>
           </Link>
         </div>
+        <p className="small muted" style={{ marginTop: "1.25rem", textAlign: "center" }}>
+          ¿Primera vez en Brevetto? Consulte el <Link href="/ayuda">manual de usuario</Link> con la guía paso a paso.
+        </p>
       </div>
     </main>
   );

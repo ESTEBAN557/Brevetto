@@ -234,7 +234,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
           <footer className="pfooter no-print">
             <span>Copyright © {new Date().getFullYear()} Coltebienes S.A.</span>
             <span>
-              <a href="#">Política de privacidad</a> · <a href="#">Términos &amp; Condiciones</a>
+              <a href="/ayuda#c-ingreso" target="_blank" rel="noreferrer">¿Necesitas ayuda? Manual de usuario</a> · <a href="#">Política de privacidad</a> · <a href="#">Términos &amp; Condiciones</a>
             </span>
           </footer>
         </div>

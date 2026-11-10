@@ -1,6 +1,6 @@
 name: CI
 
-# Pipeline de integración continua (Calidad del Software, Sprint 1).
+# Pipeline de integración continua (Calidad del Software; actualizado en el Sprint 3).
 # Valida los tres componentes del stack en cada Pull Request contra `main`:
 # frontend, backend/worker e infraestructura. Debe estar "green" antes de
 # permitir el merge (branch protection configurada en GitHub, ver wiki
@@ -82,15 +82,14 @@ jobs:
         run: ruff check .
       - name: Ruff — formato
         run: ruff format --check .
-      - name: mypy — tipado estático (progresivo, ver pyproject.toml)
-        run: mypy apps/documents/services apps/core/services.py
-        continue-on-error: true # adopción incremental; no bloquea aún el merge
+      - name: mypy — tipado estático (0 hallazgos desde el Sprint 3; bloquea el merge)
+        run: mypy apps config
       - name: Django system check
         run: python manage.py check
       - name: Migraciones sin cambios pendientes
         run: python manage.py makemigrations --check --dry-run
-      - name: pytest (suite completa, excluye pruebas de integración con Gemini)
-        run: pytest -m "not integration"
+      - name: pytest + cobertura (excluye integración con Gemini; mínimo 90 %)
+        run: pytest -m "not integration" --cov=apps --cov-report=term --cov-fail-under=90
       - name: Auditoría de dependencias (Security Analysis)
         run: pip-audit -r requirements.txt --ignore-vuln PYSEC-2026-1845
         continue-on-error: true # pytest 9 pendiente de evaluar (breaking change); riesgo bajo (solo dev/CI)
@@ -109,3 +108,12 @@ jobs:
           # Variables mínimas para que `compose config` resuelva sin un .env real.
           POSTGRES_PASSWORD: ci
           MINIO_ROOT_PASSWORD: ci-minio-pass
+      - name: Validar docker-compose.prod.yml (despliegue en la nube)
+        run: docker compose -f docker-compose.prod.yml --env-file deploy/.env.prod.example config --quiet
+      - name: Validar Caddyfile
+        run: >-
+          docker run --rm -e BREVETTO_DOMAIN=example.com -e AWS_STORAGE_BUCKET_NAME=brevetto-docs
+          -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine
+          caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Construir imagen de producción del frontend
+        run: docker build -f frontend/Dockerfile.prod -t brevetto-frontend:ci frontend

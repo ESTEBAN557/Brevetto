@@ -7,3 +7,4 @@ mypy>=1.11,<1.14                # verificación estática de tipos
 django-stubs>=5.0,<5.2          # stubs de Django para mypy
 djangorestframework-stubs>=3.15,<3.16
 pip-audit>=2.7,<3.0             # auditoría de vulnerabilidades en dependencias (Security Analysis)
+pytest-cov>=5.0,<7.0           # cobertura de pruebas (el CI exige >= 90 %)

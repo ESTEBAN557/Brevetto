@@ -9,7 +9,8 @@ from django.contrib.auth import get_user_model
 from apps.documents.models import AuditLog, Document
 
 
-def get_client_ip(request) -> str | None:
+# `request` puede ser HttpRequest de Django o Request de DRF (que lo envuelve): se tipa como Any.
+def get_client_ip(request: Any) -> str | None:
     """Obtiene la IP real del cliente respetando proxies inversos (X-Forwarded-For)."""
     if request is None:
         return None
@@ -19,7 +20,7 @@ def get_client_ip(request) -> str | None:
     return request.META.get("REMOTE_ADDR") or None
 
 
-def get_user_agent(request) -> str:
+def get_user_agent(request: Any) -> str:
     if request is None:
         return ""
     return (request.META.get("HTTP_USER_AGENT") or "")[:500]
@@ -29,8 +30,8 @@ def log_action(
     document: Document,
     action: str,
     *,
-    user=None,
-    request=None,
+    user: Any = None,
+    request: Any = None,
     details: dict[str, Any] | None = None,
 ) -> AuditLog:
     """Registra una acción sobre un documento. Solo INSERT: la tabla es append-only."""

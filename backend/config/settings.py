@@ -29,6 +29,18 @@ environ.Env.read_env(BASE_DIR.parent / ".env")
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="dev-insecure-change-me")
 DEBUG = env("DJANGO_DEBUG")
 ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
+# Orígenes HTTPS confiables para el admin de Django detrás del proxy (ej. https://brevetto.example.com).
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+# Ruta del admin de Django. En producción el frontend Next.js ya usa /admin, por eso se publica
+# en otra ruta (docker-compose.prod.yml usa "django-admin/").
+DJANGO_ADMIN_URL = env("DJANGO_ADMIN_URL", default="admin/")
+
+# Detrás de un proxy TLS (Caddy en docker-compose.prod.yml): confiar en X-Forwarded-Proto.
+if env.bool("DJANGO_BEHIND_TLS_PROXY", default=False):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
 
 # --- Aplicaciones -----------------------------------------------------------
 INSTALLED_APPS = [
@@ -61,6 +73,14 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+if not DEBUG:
+    # Sirve los estáticos del admin de Django en producción (gunicorn no sirve archivos;
+    # en desarrollo los sirve runserver). Requiere `collectstatic` en la imagen.
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index("django.middleware.security.SecurityMiddleware") + 1,
+        "whitenoise.middleware.WhiteNoiseMiddleware",
+    )
 
 ROOT_URLCONF = "config.urls"
 
@@ -163,6 +183,23 @@ CLIENT_OTP_DEV_ECHO = env.bool("CLIENT_OTP_DEV_ECHO", default=DEBUG)
 CLIENT_PORTAL_EXECUTIVE_NAME = env("CLIENT_PORTAL_EXECUTIVE_NAME", default="Equipo de Servicio al Cliente")
 CLIENT_PORTAL_EXECUTIVE_EMAIL = env("CLIENT_PORTAL_EXECUTIVE_EMAIL", default="")
 CLIENT_PORTAL_EXECUTIVE_WHATSAPP = env("CLIENT_PORTAL_EXECUTIVE_WHATSAPP", default="")
+# URL pública del frontend, usada en los correos que se envían al cliente.
+PUBLIC_FRONTEND_URL = env("PUBLIC_FRONTEND_URL", default="http://localhost:3000").rstrip("/")
+
+# --- Correo (códigos de acceso y avisos de requerimientos) --------------------
+# Con EMAIL_HOST definido se usa SMTP real (ej. Gmail con contraseña de aplicación, SendGrid, Mailgun).
+# Sin EMAIL_HOST los correos se imprimen en el log del backend (útil en desarrollo).
+EMAIL_HOST = env("EMAIL_HOST", default="")
+if EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+    EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+    EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+    EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+    EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Brevetto · Coltebienes <no-reply@brevetto.local>")
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=8),

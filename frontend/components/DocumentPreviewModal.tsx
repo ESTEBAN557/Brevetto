@@ -17,12 +17,16 @@ interface DocumentPreviewModalProps {
 /** US-019: previsualización integrada (iframe/imagen) con fallback a descarga segura. */
 export function DocumentPreviewModal({ document: doc, onClose }: DocumentPreviewModalProps) {
   const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   async function download() {
     setDownloading(true);
+    setDownloadError(null);
     try {
       const data = await documentsApi.downloadUrl(doc.id);
       window.open(data.download_url, "_blank", "noopener");
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "No fue posible descargar el documento");
     } finally {
       setDownloading(false);
     }
@@ -44,9 +48,15 @@ export function DocumentPreviewModal({ document: doc, onClose }: DocumentPreview
       }
       footer={
         <>
-          <span className="small muted" style={{ marginRight: "auto" }}>
-            Si el navegador no muestra el documento, use la descarga segura (URL válida 15 minutos).
-          </span>
+          {downloadError ? (
+            <span className="small" style={{ marginRight: "auto", color: "var(--terracotta)" }} role="alert">
+              {downloadError}
+            </span>
+          ) : (
+            <span className="small muted" style={{ marginRight: "auto" }}>
+              Si el navegador no muestra el documento, use la descarga segura (URL válida 15 minutos).
+            </span>
+          )}
           <button type="button" className="btn-secondary" onClick={download} disabled={downloading}>
             {downloading && <span className="spinner" />} Descargar
           </button>

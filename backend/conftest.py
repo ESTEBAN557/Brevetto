@@ -5,6 +5,8 @@ from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
@@ -84,11 +86,20 @@ def invoice_type(db):
     return DocumentType.objects.get(code="FACTURA")
 
 
+SAMPLE_PDF_BYTES = b"%PDF-1.4\n% Brevetto test document\n"
+
+
+def store_sample_file(key: str, content: bytes = SAMPLE_PDF_BYTES) -> str:
+    """Guarda un archivo en el storage en memoria para que el documento sea consultable."""
+    return default_storage.save(key, ContentFile(content))
+
+
 @pytest.fixture
 def document(db, user):
+    file_path = store_sample_file("radicados/sin_clasificar/2026/09/RAD-20260920-000001_cuenta_cobro_sep.pdf")
     return Document.objects.create(
         filing_number=FilingSequence.get_next_number(date(2026, 9, 20)),
-        file_path="radicados/sin_clasificar/2026/09/RAD-20260920-000001_cuenta_cobro_sep.pdf",
+        file_path=file_path,
         original_filename="cuenta_cobro_sep.pdf",
         file_hash="a" * 64,
         file_size_bytes=1_048_576,

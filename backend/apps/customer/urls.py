@@ -1,8 +1,36 @@
 from django.urls import path
 
-from apps.customer import views
+from apps.customer import staff_views, views
 
 urlpatterns = [
+    # Atención de requerimientos por el personal (JWT)
+    path("service-requests/", staff_views.StaffRequestListView.as_view(), name="staff-requests"),
+    path(
+        "service-requests/summary/",
+        staff_views.StaffRequestSummaryView.as_view(),
+        name="staff-requests-summary",
+    ),
+    path(
+        "service-requests/<int:pk>/",
+        staff_views.StaffRequestDetailView.as_view(),
+        name="staff-request-detail",
+    ),
+    path(
+        "service-requests/<int:pk>/messages/",
+        staff_views.StaffRequestMessageView.as_view(),
+        name="staff-request-messages",
+    ),
+    path(
+        "service-requests/<int:pk>/attachments/",
+        staff_views.StaffRequestAttachmentView.as_view(),
+        name="staff-request-attachments",
+    ),
+    path(
+        "service-requests/<int:pk>/attachments/<int:attachment_id>/download/",
+        staff_views.StaffRequestAttachmentDownloadView.as_view(),
+        name="staff-request-attachment-download",
+    ),
+    # Mi Portal (sesión de cliente)
     path("client-portal/auth/request-code/", views.RequestCodeView.as_view(), name="client-request-code"),
     path("client-portal/auth/verify-code/", views.VerifyCodeView.as_view(), name="client-verify-code"),
     path("client-portal/auth/login/", views.PasswordLoginView.as_view(), name="client-login"),

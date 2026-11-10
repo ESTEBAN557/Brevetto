@@ -15,8 +15,10 @@ import logging
 import zipfile
 from collections.abc import Iterator
 from datetime import datetime
+from typing import Any
 
 from django.core.files.storage import default_storage
+from django.db.models import QuerySet
 from django.utils import timezone
 from django.utils.text import get_valid_filename, slugify
 
@@ -34,14 +36,14 @@ MANIFEST_NAME = "manifest.json"
 class _ChunkBuffer(io.RawIOBase):
     """Destino no posicionable para ZipFile: acumula bytes que el generador drena."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._chunks: list[bytes] = []
 
     def writable(self) -> bool:
         return True
 
-    def write(self, data) -> int:  # type: ignore[override]
+    def write(self, data: bytes) -> int:  # type: ignore[override]
         self._chunks.append(bytes(data))
         return len(data)
 
@@ -61,7 +63,7 @@ def zip_entry_path(document: Document) -> str:
     return f"{category}/{document.filing_number}_{safe_name}"
 
 
-def export_documents(contract: Contract):
+def export_documents(contract: Contract) -> QuerySet[Document]:
     """Documentos del expediente en orden cronológico (todos los estados)."""
     return contract.digital_record.documents.select_related("document_type", "registered_by").order_by(
         "created_at", "filing_number"
@@ -153,7 +155,7 @@ def iter_record_zip(
     yield buffer.drain()
 
 
-def log_record_export(contract: Contract, documents: list[Document], *, request=None) -> int:
+def log_record_export(contract: Contract, documents: list[Document], *, request: Any = None) -> int:
     """Deja rastro DESCARGA en cada documento exportado (la bitácora es por documento)."""
     for document in documents:
         log_action(

@@ -45,6 +45,8 @@ def ai_payload(**overrides):
 
 @pytest.fixture
 def stored_document(document):
+    # El fixture `document` ya guarda un PDF de ejemplo: se reemplaza por el contenido de esta suite.
+    default_storage.delete(document.file_path)
     saved = default_storage.save(document.file_path, ContentFile(b"%PDF-1.4 contenido de prueba"))
     assert saved == document.file_path
     return document

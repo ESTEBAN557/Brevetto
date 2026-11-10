@@ -1,0 +1,5 @@
+# Scripts y configuración que se ejecutan en Linux (contenedores / VM): siempre LF
+*.sh text eol=lf
+deploy/Caddyfile text eol=lf
+backend/entrypoint.sh text eol=lf
+*.yml text eol=lf

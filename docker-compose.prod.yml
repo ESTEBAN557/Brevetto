@@ -1,0 +1,168 @@
+# ---------------------------------------------------------------------------
+# Brevetto — despliegue de producción en una sola máquina virtual (GCP Compute Engine u otra nube).
+#
+# Un único dominio con HTTPS automático (Caddy + Let's Encrypt):
+#   https://<dominio>/                 -> frontend Next.js (portal de clientes y panel del personal)
+#   https://<dominio>/api/...          -> API Django REST (Gunicorn)
+#   https://<dominio>/django-admin/... -> admin de Django
+#   https://<dominio>/<bucket>/...     -> descargas de documentos (URLs prefirmadas de MinIO)
+#
+# Uso (ver deploy/README.md):
+#   cp deploy/.env.prod.example .env.prod   # y completar los valores
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# Solo Caddy publica puertos (80/443). PostgreSQL, Redis y MinIO quedan en la red interna.
+# ---------------------------------------------------------------------------
+name: brevetto-prod
+
+x-backend-env: &backend-env
+  DJANGO_DEBUG: "False"
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Defina DJANGO_SECRET_KEY en .env.prod}
+  DJANGO_ALLOWED_HOSTS: ${BREVETTO_DOMAIN:?Defina BREVETTO_DOMAIN en .env.prod},backend,localhost
+  CSRF_TRUSTED_ORIGINS: https://${BREVETTO_DOMAIN}
+  CORS_ALLOWED_ORIGINS: https://${BREVETTO_DOMAIN}
+  DJANGO_ADMIN_URL: django-admin/
+  DJANGO_BEHIND_TLS_PROXY: "True"
+  PUBLIC_FRONTEND_URL: https://${BREVETTO_DOMAIN}
+  POSTGRES_DB: ${POSTGRES_DB:-brevetto}
+  POSTGRES_USER: ${POSTGRES_USER:-brevetto}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env.prod}
+  POSTGRES_HOST: db
+  POSTGRES_PORT: "5432"
+  REDIS_URL: redis://redis:6379/0
+  AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?Defina MINIO_ROOT_USER en .env.prod}
+  AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?Defina MINIO_ROOT_PASSWORD en .env.prod}
+  AWS_STORAGE_BUCKET_NAME: ${AWS_STORAGE_BUCKET_NAME:-brevetto-docs}
+  AWS_S3_REGION_NAME: us-east-1
+  AWS_S3_ENDPOINT_URL: http://minio:9000
+  # Las URLs prefirmadas se firman para el dominio público; Caddy las enruta a MinIO.
+  AWS_S3_PUBLIC_ENDPOINT_URL: https://${BREVETTO_DOMAIN}
+  PRESIGNED_URL_EXPIRATION_SECONDS: "900"
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash}
+  GEMINI_FALLBACK_MODEL: ${GEMINI_FALLBACK_MODEL:-gemini-3-flash-preview}
+  AI_CONFIDENCE_THRESHOLD: "0.85"
+  CLIENT_OTP_DEV_ECHO: ${CLIENT_OTP_DEV_ECHO:-False}
+  EMAIL_HOST: ${EMAIL_HOST:-}
+  EMAIL_PORT: ${EMAIL_PORT:-587}
+  EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+  EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+  EMAIL_USE_TLS: ${EMAIL_USE_TLS:-True}
+  DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-Brevetto · Coltebienes <no-reply@brevetto.local>}
+  TZ: America/Bogota
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-brevetto}
+      POSTGRES_USER: ${POSTGRES_USER:-brevetto}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: America/Bogota
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-brevetto} -d ${POSTGRES_DB:-brevetto}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: quay.io/minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # El entrypoint aplica migraciones y crea el bucket antes de arrancar Gunicorn.
+    command:
+      ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120",
+       "--access-logfile", "-"]
+    environment: *backend-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/api/v1/health/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    entrypoint: []
+    command: ["celery", "-A", "config", "worker", "-B", "-l", "info", "--concurrency=2",
+              "--schedule=/tmp/celerybeat-schedule"]
+    environment: *backend-env
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL: /api/v1
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      BREVETTO_DOMAIN: ${BREVETTO_DOMAIN}
+      AWS_STORAGE_BUCKET_NAME: ${AWS_STORAGE_BUCKET_NAME:-brevetto-docs}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+      - minio
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  caddy_data:
+  caddy_config:
